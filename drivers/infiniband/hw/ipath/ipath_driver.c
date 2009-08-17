@@ -141,9 +141,7 @@ static int __devinit ipath_init_one(struct pci_dev *,
 static const struct pci_device_id ipath_pci_tbl[] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_PATHSCALE, PCI_DEVICE_ID_INFINIPATH_HT) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_PATHSCALE, PCI_DEVICE_ID_INFINIPATH_PE800) },
-#ifdef CONFIG_BROKEN
 	{ PCI_DEVICE(PCI_VENDOR_ID_QLOGIC, PCI_DEVICE_ID_INFINIPATH_7220) },
-#endif
 	{ 0, }
 };
 
@@ -538,7 +536,6 @@ static int __devinit ipath_init_one(struct pci_dev *pdev,
 			      "CONFIG_PCI_MSI is not enabled\n", ent->device);
 		return -ENODEV;
 #endif
-#ifdef CONFIG_BROKEN
 	case PCI_DEVICE_ID_INFINIPATH_7220:
 #ifndef CONFIG_PCI_MSI
 		ipath_dbg("CONFIG_PCI_MSI is not enabled, "
@@ -546,7 +543,6 @@ static int __devinit ipath_init_one(struct pci_dev *pdev,
 #endif
 		ipath_init_iba7220_funcs(dd);
 		break;
-#endif
 	default:
 		ipath_dev_err(dd, "Found unknown QLogic deviceid 0x%x, "
 			      "failing\n", ent->device);

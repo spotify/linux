@@ -29,10 +29,9 @@ ib_ipath-y := \
 	ipath_user_pages.o \
 	ipath_user_sdma.o \
 	ipath_verbs_mcast.o \
-	ipath_verbs.o
-
-# IBA7220 depends on firmware to be removed
-ib_ipath-$(CONFIG_BROKEN) += ipath_iba7220.o ipath_sd7220.o
+	ipath_verbs.o \
+	ipath_iba7220.o \
+	ipath_sd7220.o
 
 ib_ipath-$(CONFIG_HT_IRQ) += ipath_iba6110.o
 ib_ipath-$(CONFIG_PCI_MSI) += ipath_iba6120.o

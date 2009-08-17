@@ -37,10 +37,14 @@
 
 #include <linux/pci.h>
 #include <linux/delay.h>
+#include <linux/firmware.h>
 
 #include "ipath_kernel.h"
 #include "ipath_registers.h"
 #include "ipath_7220.h"
+
+#define SD7220_FW_NAME "qlogic/sd7220.fw"
+MODULE_FIRMWARE(SD7220_FW_NAME);
 
 /*
  * The IBSerDesMappTable is a memory that holds values to be stored in
@@ -88,6 +92,11 @@ static int ipath_internal_presets(struct ipath_devdata *dd);
 static int ipath_sd_trimself(struct ipath_devdata *dd, int val);
 static int epb_access(struct ipath_devdata *dd, int sdnum, int claim);
 
+static int
+ipath_sd7220_ib_load(struct ipath_devdata *dd, const struct firmware *fw);
+static int
+ipath_sd7220_ib_vfy(struct ipath_devdata *dd, const struct firmware *fw);
+
 void ipath_set_relock_poll(struct ipath_devdata *dd, int ibup);
 
 /*
@@ -98,9 +107,10 @@ void ipath_set_relock_poll(struct ipath_devdata *dd, int ibup);
  * ipath_sd7220_init() is no longer valid. Instead, we check for the
  * actual uC code having been loaded.
  */
-static int ipath_ibsd_ucode_loaded(struct ipath_devdata *dd)
+static int
+ipath_ibsd_ucode_loaded(struct ipath_devdata *dd, const struct firmware *fw)
 {
-	if (!dd->serdes_first_init_done && (ipath_sd7220_ib_vfy(dd) > 0))
+	if (!dd->serdes_first_init_done && (ipath_sd7220_ib_vfy(dd, fw) > 0))
 		dd->serdes_first_init_done = 1;
 	return dd->serdes_first_init_done;
 }
@@ -363,6 +373,7 @@ static void ipath_sd_trimdone_monitor(struct ipath_devdata *dd,
  */
 int ipath_sd7220_init(struct ipath_devdata *dd, int was_reset)
 {
+	const struct firmware *fw;
 	int ret = 1; /* default to failure */
 	int first_reset;
 	int val_stat;
@@ -373,8 +384,14 @@ int ipath_sd7220_init(struct ipath_devdata *dd, int was_reset)
 		ipath_sd_trimdone_monitor(dd, "Driver-reload");
 	}
 
+	ret = request_firmware(&fw, SD7220_FW_NAME, &dd->pcidev->dev);
+	if (ret) {
+		ipath_dev_err(dd, "Failed to load IB SERDES image\n");
+		goto done;
+	}
+
 	/* Substitute our deduced value for was_reset */
-	ret = ipath_ibsd_ucode_loaded(dd);
+	ret = ipath_ibsd_ucode_loaded(dd, fw);
 	if (ret < 0) {
 		ret = 1;
 		goto done;
@@ -431,7 +448,7 @@ int ipath_sd7220_init(struct ipath_devdata *dd, int was_reset)
 		int vfy;
 		int trim_done;
 		ipath_dbg("SerDes uC was reset, reloading PRAM\n");
-		ret = ipath_sd7220_ib_load(dd);
+		ret = ipath_sd7220_ib_load(dd, fw);
 		if (ret < 0) {
 			ipath_dev_err(dd, "Failed to load IB SERDES image\n");
 			ret = 1;
@@ -439,7 +456,7 @@ int ipath_sd7220_init(struct ipath_devdata *dd, int was_reset)
 		}
 
 		/* Loaded image, try to verify */
-		vfy = ipath_sd7220_ib_vfy(dd);
+		vfy = ipath_sd7220_ib_vfy(dd, fw);
 		if (vfy != ret) {
 			ipath_dev_err(dd, "SERDES PRAM VFY failed\n");
 			ret = 1;
@@ -500,6 +517,8 @@ int ipath_sd7220_init(struct ipath_devdata *dd, int was_reset)
 done:
 	/* start relock timer regardless, but start at 1 second */
 	ipath_set_relock_poll(dd, -1);
+
+	release_firmware(fw);
 	return ret;
 }
 
@@ -836,8 +855,8 @@ static int ipath_sd7220_ram_xfer(struct ipath_devdata *dd, int sdnum, u32 loc,
 
 #define PROG_CHUNK 64
 
-int ipath_sd7220_prog_ld(struct ipath_devdata *dd, int sdnum,
-	u8 *img, int len, int offset)
+static int ipath_sd7220_prog_ld(struct ipath_devdata *dd, int sdnum,
+	const u8 *img, int len, int offset)
 {
 	int cnt, sofar, req;
 
@@ -847,7 +866,7 @@ int ipath_sd7220_prog_ld(struct ipath_devdata *dd, int sdnum,
 		if (req > PROG_CHUNK)
 			req = PROG_CHUNK;
 		cnt = ipath_sd7220_ram_xfer(dd, sdnum, offset + sofar,
-					  img + sofar, req, 0);
+					    (u8 *)img + sofar, req, 0);
 		if (cnt < req) {
 			sofar = -1;
 			break;
@@ -860,7 +879,7 @@ int ipath_sd7220_prog_ld(struct ipath_devdata *dd, int sdnum,
 #define VFY_CHUNK 64
 #define SD_PRAM_ERROR_LIMIT 42
 
-int ipath_sd7220_prog_vfy(struct ipath_devdata *dd, int sdnum,
+static int ipath_sd7220_prog_vfy(struct ipath_devdata *dd, int sdnum,
 	const u8 *img, int len, int offset)
 {
 	int cnt, sofar, req, idx, errors;
@@ -886,6 +905,18 @@ int ipath_sd7220_prog_vfy(struct ipath_devdata *dd, int sdnum,
 		sofar += cnt;
 	}
 	return errors ? -errors : sofar;
+}
+
+static int
+ipath_sd7220_ib_load(struct ipath_devdata *dd, const struct firmware *fw)
+{
+	return ipath_sd7220_prog_ld(dd, IB_7220_SERDES, fw->data, fw->size, 0);
+}
+
+static int
+ipath_sd7220_ib_vfy(struct ipath_devdata *dd, const struct firmware *fw)
+{
+	return ipath_sd7220_prog_vfy(dd, IB_7220_SERDES, fw->data, fw->size, 0);
 }
 
 /* IRQ not set up at this point in init, so we poll. */
