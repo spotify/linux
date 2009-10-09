@@ -81,7 +81,7 @@ static const struct {
 
 static void iwl3945_led_cmd_callback(struct iwl_priv *priv,
 				     struct iwl_device_cmd *cmd,
-				     struct sk_buff *skb)
+				     struct iwl_rx_packet *skb)
 {
 }
 
