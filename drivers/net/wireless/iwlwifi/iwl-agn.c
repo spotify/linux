@@ -525,7 +525,7 @@ int iwl_hw_tx_queue_init(struct iwl_priv *priv,
 static void iwl_rx_reply_alive(struct iwl_priv *priv,
 				struct iwl_rx_mem_buffer *rxb)
 {
-	struct iwl_rx_packet *pkt = (struct iwl_rx_packet *)rxb->skb->data;
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_alive_resp *palive;
 	struct delayed_work *pwork;
 
@@ -611,7 +611,7 @@ static void iwl_rx_beacon_notif(struct iwl_priv *priv,
 				struct iwl_rx_mem_buffer *rxb)
 {
 #ifdef CONFIG_IWLWIFI_DEBUG
-	struct iwl_rx_packet *pkt = (struct iwl_rx_packet *)rxb->skb->data;
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl4965_beacon_notif *beacon =
 		(struct iwl4965_beacon_notif *)pkt->u.raw;
 	u8 rate = iwl_hw_get_rate(beacon->beacon_notify_hdr.rate_n_flags);
@@ -635,7 +635,7 @@ static void iwl_rx_beacon_notif(struct iwl_priv *priv,
 static void iwl_rx_card_state_notif(struct iwl_priv *priv,
 				    struct iwl_rx_mem_buffer *rxb)
 {
-	struct iwl_rx_packet *pkt = (struct iwl_rx_packet *)rxb->skb->data;
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	u32 flags = le32_to_cpu(pkt->u.card_state_notif.flags);
 	unsigned long status = priv->status;
 
@@ -787,10 +787,10 @@ void iwl_rx_handle(struct iwl_priv *priv)
 
 		rxq->queue[i] = NULL;
 
-		pci_unmap_single(priv->pci_dev, rxb->real_dma_addr,
-				 priv->hw_params.rx_buf_size + 256,
-				 PCI_DMA_FROMDEVICE);
-		pkt = (struct iwl_rx_packet *)rxb->skb->data;
+		pci_unmap_page(priv->pci_dev, rxb->page_dma,
+			       PAGE_SIZE << priv->hw_params.rx_page_order,
+			       PCI_DMA_FROMDEVICE);
+		pkt = rxb_addr(rxb);
 
 		/* Reclaim a command buffer only if this packet is a response
 		 *   to a (driver-originated) command.
@@ -823,10 +823,10 @@ void iwl_rx_handle(struct iwl_priv *priv)
 		}
 
 		if (reclaim) {
-			/* Invoke any callbacks, transfer the skb to caller, and
-			 * fire off the (possibly) blocking iwl_send_cmd()
+			/* Invoke any callbacks, transfer the buffer to caller,
+			 * and fire off the (possibly) blocking iwl_send_cmd()
 			 * as we reclaim the driver command queue */
-			if (rxb && rxb->skb)
+			if (rxb && rxb->page)
 				iwl_tx_cmd_complete(priv, rxb);
 			else
 				IWL_WARN(priv, "Claim null rxb?\n");
@@ -835,10 +835,10 @@ void iwl_rx_handle(struct iwl_priv *priv)
 		/* For now we just don't re-use anything.  We can tweak this
 		 * later to try and re-use notification packets and SKBs that
 		 * fail to Rx correctly */
-		if (rxb->skb != NULL) {
-			priv->alloc_rxb_skb--;
-			dev_kfree_skb_any(rxb->skb);
-			rxb->skb = NULL;
+		if (rxb->page != NULL) {
+			priv->alloc_rxb_page--;
+			__free_pages(rxb->page, priv->hw_params.rx_page_order);
+			rxb->page = NULL;
 		}
 
 		spin_lock_irqsave(&rxq->lock, flags);
@@ -905,6 +905,8 @@ static void iwl_irq_tasklet_legacy(struct iwl_priv *priv)
 	}
 #endif
 
+	spin_unlock_irqrestore(&priv->lock, flags);
+
 	/* Since CSR_INT and CSR_FH_INT_STATUS reads and clears are not
 	 * atomic, make sure that inta covers all the interrupts that
 	 * we've discovered, even if FH interrupt came in just after
@@ -925,8 +927,6 @@ static void iwl_irq_tasklet_legacy(struct iwl_priv *priv)
 		iwl_irq_handle_error(priv);
 
 		handled |= CSR_INT_BIT_HW_ERR;
-
-		spin_unlock_irqrestore(&priv->lock, flags);
 
 		return;
 	}
@@ -1054,7 +1054,6 @@ static void iwl_irq_tasklet_legacy(struct iwl_priv *priv)
 			"flags 0x%08lx\n", inta, inta_mask, inta_fh, flags);
 	}
 #endif
-	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
 /* tasklet for iwlagn interrupt */
@@ -1084,6 +1083,9 @@ static void iwl_irq_tasklet(struct iwl_priv *priv)
 				inta, inta_mask);
 	}
 #endif
+
+	spin_unlock_irqrestore(&priv->lock, flags);
+
 	/* saved interrupt in inta variable now we can reset priv->inta */
 	priv->inta = 0;
 
@@ -1098,8 +1100,6 @@ static void iwl_irq_tasklet(struct iwl_priv *priv)
 		iwl_irq_handle_error(priv);
 
 		handled |= CSR_INT_BIT_HW_ERR;
-
-		spin_unlock_irqrestore(&priv->lock, flags);
 
 		return;
 	}
@@ -1240,14 +1240,10 @@ static void iwl_irq_tasklet(struct iwl_priv *priv)
 			 inta & ~priv->inta_mask);
 	}
 
-
 	/* Re-enable all interrupts */
 	/* only Re-enable if diabled by irq */
 	if (test_bit(STATUS_INT_ENABLED, &priv->status))
 		iwl_enable_interrupts(priv);
-
-	spin_unlock_irqrestore(&priv->lock, flags);
-
 }
 
 
