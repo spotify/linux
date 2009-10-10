@@ -791,6 +791,10 @@ static int via_playback_pcm_open(struct hda_pcm_stream *hinfo,
 				 struct snd_pcm_substream *substream)
 {
 	struct via_spec *spec = codec->spec;
+	int idle = substream->pstr->substream_opened == 1
+		&& substream->ref_count == 0;
+
+	analog_low_current_mode(codec, idle);
 	return snd_hda_multi_out_analog_open(codec, &spec->multiout, substream,
 					     hinfo);
 }
@@ -1097,6 +1101,11 @@ static int via_build_controls(struct hda_codec *codec)
 		if (err < 0)
 			return err;
 	}
+
+	/* init power states */
+	set_jack_power_state(codec);
+	analog_low_current_mode(codec, 1);
+
 	via_free_kctls(codec); /* no longer needed */
 	return 0;
 }
@@ -2320,6 +2329,17 @@ static struct hda_verb vt1708B_uniwill_init_verbs[] = {
 	{ }
 };
 
+static int via_pcm_open_close(struct hda_pcm_stream *hinfo,
+			      struct hda_codec *codec,
+			      struct snd_pcm_substream *substream)
+{
+	int idle = substream->pstr->substream_opened == 1
+		&& substream->ref_count == 0;
+
+	analog_low_current_mode(codec, idle);
+	return 0;
+}
+
 static struct hda_pcm_stream vt1708B_8ch_pcm_analog_playback = {
 	.substreams = 2,
 	.channels_min = 2,
@@ -2328,7 +2348,8 @@ static struct hda_pcm_stream vt1708B_8ch_pcm_analog_playback = {
 	.ops = {
 		.open = via_playback_pcm_open,
 		.prepare = via_playback_multi_pcm_prepare,
-		.cleanup = via_playback_multi_pcm_cleanup
+		.cleanup = via_playback_multi_pcm_cleanup,
+		.close = via_pcm_open_close
 	},
 };
 
@@ -2350,8 +2371,10 @@ static struct hda_pcm_stream vt1708B_pcm_analog_capture = {
 	.channels_max = 2,
 	.nid = 0x13, /* NID to query formats and rates */
 	.ops = {
+		.open = via_pcm_open_close,
 		.prepare = via_capture_pcm_prepare,
-		.cleanup = via_capture_pcm_cleanup
+		.cleanup = via_capture_pcm_cleanup,
+		.close = via_pcm_open_close
 	},
 };
 
@@ -2808,7 +2831,8 @@ static struct hda_pcm_stream vt1708S_pcm_analog_playback = {
 	.ops = {
 		.open = via_playback_pcm_open,
 		.prepare = via_playback_pcm_prepare,
-		.cleanup = via_playback_pcm_cleanup
+		.cleanup = via_playback_pcm_cleanup,
+		.close = via_pcm_open_close
 	},
 };
 
@@ -2818,8 +2842,10 @@ static struct hda_pcm_stream vt1708S_pcm_analog_capture = {
 	.channels_max = 2,
 	.nid = 0x13, /* NID to query formats and rates */
 	.ops = {
+		.open = via_pcm_open_close,
 		.prepare = via_capture_pcm_prepare,
-		.cleanup = via_capture_pcm_cleanup
+		.cleanup = via_capture_pcm_cleanup,
+		.close = via_pcm_open_close
 	},
 };
 
@@ -3244,7 +3270,8 @@ static struct hda_pcm_stream vt1702_pcm_analog_playback = {
 	.ops = {
 		.open = via_playback_pcm_open,
 		.prepare = via_playback_multi_pcm_prepare,
-		.cleanup = via_playback_multi_pcm_cleanup
+		.cleanup = via_playback_multi_pcm_cleanup,
+		.close = via_pcm_open_close
 	},
 };
 
@@ -3254,8 +3281,10 @@ static struct hda_pcm_stream vt1702_pcm_analog_capture = {
 	.channels_max = 2,
 	.nid = 0x12, /* NID to query formats and rates */
 	.ops = {
+		.open = via_pcm_open_close,
 		.prepare = via_capture_pcm_prepare,
-		.cleanup = via_capture_pcm_cleanup
+		.cleanup = via_capture_pcm_cleanup,
+		.close = via_pcm_open_close
 	},
 };
 
