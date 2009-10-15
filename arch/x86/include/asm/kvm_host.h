@@ -414,6 +414,8 @@ struct kvm_arch{
 	unsigned long irq_states[KVM_IOAPIC_NUM_PINS];
 	u64 vm_init_tsc;
 	s64 kvmclock_offset;
+
+	struct kvm_xen_hvm_config xen_hvm_config;
 };
 
 struct kvm_vm_stat {
