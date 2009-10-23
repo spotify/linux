@@ -552,6 +552,7 @@ static void iwl3945_pass_packet_to_mac80211(struct iwl_priv *priv,
 	u16 len = le16_to_cpu(rx_hdr->len);
 	struct sk_buff *skb;
 	int ret;
+	__le16 fc = hdr->frame_control;
 
 	/* We received data from the HW, so stop the watchdog */
 	if (unlikely(len + IWL39_RX_FRAME_SIZE >
@@ -584,9 +585,9 @@ static void iwl3945_pass_packet_to_mac80211(struct iwl_priv *priv,
 	/* mac80211 currently doesn't support paged SKB. Convert it to
 	 * linear SKB for management frame and data frame requires
 	 * software decryption or software defragementation. */
-	if (ieee80211_is_mgmt(hdr->frame_control) ||
-	    ieee80211_has_protected(hdr->frame_control) ||
-	    ieee80211_has_morefrags(hdr->frame_control) ||
+	if (ieee80211_is_mgmt(fc) ||
+	    ieee80211_has_protected(fc) ||
+	    ieee80211_has_morefrags(fc) ||
 	    le16_to_cpu(hdr->seq_ctrl) & IEEE80211_SCTL_FRAG)
 		ret = skb_linearize(skb);
 	else
@@ -598,15 +599,19 @@ static void iwl3945_pass_packet_to_mac80211(struct iwl_priv *priv,
 		goto out;
 	}
 
+	/*
+	 * XXX: We cannot touch the page and its virtual memory (pkt) after
+	 * here. It might have already been freed by the above skb change.
+	 */
+
 #ifdef CONFIG_IWLWIFI_LEDS
-	if (ieee80211_is_data(hdr->frame_control))
+	if (ieee80211_is_data(fc))
 		priv->rxtxpackets += len;
 #endif
-	iwl_update_stats(priv, false, hdr->frame_control, len);
-
+	iwl_update_stats(priv, false, fc, len);
 	memcpy(IEEE80211_SKB_RXCB(skb), stats, sizeof(*stats));
-	ieee80211_rx(priv->hw, skb);
 
+	ieee80211_rx(priv->hw, skb);
  out:
 	priv->alloc_rxb_page--;
 	rxb->page = NULL;
