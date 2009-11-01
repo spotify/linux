@@ -24,6 +24,7 @@
  */
 
 #include <asm/div64.h>
+#include <linux/firmware.h>
 
 #include "dvb_frontend.h"
 
@@ -590,11 +591,15 @@ static int lgs8913_init(struct lgs8gxx_state *priv)
 	return 0;
 }
 
-#ifdef CONFIG_BROKEN
 static int lgs8g75_init_data(struct lgs8gxx_state *priv)
 {
-	const u8 *p = lgs8g75_initdat;
+	const struct firmware *fw;
+	int rc;
 	int i;
+
+	rc = request_firmware(&fw, "lgs8g75.fw", &priv->i2c->dev);
+	if (rc)
+		return rc;
 
 	lgs8gxx_write_reg(priv, 0xC6, 0x40);
 
@@ -606,19 +611,18 @@ static int lgs8g75_init_data(struct lgs8gxx_state *priv)
 	lgs8gxx_write_reg(priv, 0x3B, 0x00);
 	lgs8gxx_write_reg(priv, 0x38, 0x00);
 
-	for (i = 0; i < sizeof(lgs8g75_initdat); i++) {
+	for (i = 0; i < fw->size; i++) {
 		lgs8gxx_write_reg(priv, 0x38, 0x00);
 		lgs8gxx_write_reg(priv, 0x3A, (u8)(i&0xff));
 		lgs8gxx_write_reg(priv, 0x3B, (u8)(i>>8));
-		lgs8gxx_write_reg(priv, 0x3C, *p);
-		p++;
+		lgs8gxx_write_reg(priv, 0x3C, fw->data[i]);
 	}
 
 	lgs8gxx_write_reg(priv, 0x38, 0x00);
 
+	release_firmware(fw);
 	return 0;
 }
-#endif
 
 static int lgs8gxx_init(struct dvb_frontend *fe)
 {
@@ -1056,14 +1060,7 @@ struct dvb_frontend *lgs8gxx_attach(const struct lgs8gxx_config *config,
 	priv->frontend.demodulator_priv = priv;
 
 	if (config->prod == LGS8GXX_PROD_LGS8G75)
-#ifdef CONFIG_BROKEN
 		lgs8g75_init_data(priv);
-#else
-	{
-		dprintk("lgs8g75 firmware not available\n");
-		goto error_out;
-	}
-#endif
 
 	return &priv->frontend;
 
