@@ -46,6 +46,7 @@ module_param(fake_signal_str, int, 0644);
 MODULE_PARM_DESC(fake_signal_str, "fake signal strength for LGS8913."
 "Signal strength calculation is slow.(default:on).");
 
+#ifdef REMOVE_DFSG
 static const u8 lgs8g75_initdat[] = {
 	0x01, 0x30, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -81,6 +82,7 @@ static const u8 lgs8g75_initdat[] = {
 	0x65, 0xE0, 0x54, 0xFD, 0xF0, 0x22, 0x90, 0x80,
 	0x65, 0xE0, 0x44, 0xC2, 0xF0, 0x22
 };
+#endif
 
 /* LGS8GXX internal helper functions */
 
@@ -625,6 +627,7 @@ static int lgs8913_init(struct lgs8gxx_state *priv)
 	return 0;
 }
 
+#ifdef CONFIG_BROKEN
 static int lgs8g75_init_data(struct lgs8gxx_state *priv)
 {
 	const u8 *p = lgs8g75_initdat;
@@ -652,6 +655,7 @@ static int lgs8g75_init_data(struct lgs8gxx_state *priv)
 
 	return 0;
 }
+#endif
 
 static int lgs8gxx_init(struct dvb_frontend *fe)
 {
@@ -1089,7 +1093,14 @@ struct dvb_frontend *lgs8gxx_attach(const struct lgs8gxx_config *config,
 	priv->frontend.demodulator_priv = priv;
 
 	if (config->prod == LGS8GXX_PROD_LGS8G75)
+#ifdef CONFIG_BROKEN
 		lgs8g75_init_data(priv);
+#else
+	{
+		dprintk("lgs8g75 firmware not available\n");
+		goto error_out;
+	}
+#endif
 
 	return &priv->frontend;
 
