@@ -1719,6 +1719,7 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 		{ 0x05, 0x8332 },
 		{ 0x06, 0x5561 }
 	};
+#ifdef REMOVE_DFSG
 	static struct phy_reg phy_reg_init_2[] = {
 		{ 0x1f, 0x0005 },
 		{ 0x05, 0xffc2 },
@@ -2074,6 +2075,7 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 		{ 0x0d, 0xf880 },
 		{ 0x1f, 0x0000 }
 	};
+#endif
 
 	rtl_phy_write(ioaddr, phy_reg_init_0, ARRAY_SIZE(phy_reg_init_0));
 
@@ -2131,7 +2133,9 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 	mdio_plus_minus(ioaddr, 0x02, 0x0100, 0x0600);
 	mdio_plus_minus(ioaddr, 0x03, 0x0000, 0xe000);
 
+#ifdef CONFIG_BROKEN
 	rtl_phy_write(ioaddr, phy_reg_init_2, ARRAY_SIZE(phy_reg_init_2));
+#endif
 }
 
 static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
@@ -2161,6 +2165,7 @@ static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
 		{ 0x05, 0x8332 },
 		{ 0x06, 0x5561 }
 	};
+#ifdef REMOVE_DFSG
 	static struct phy_reg phy_reg_init_1[] = {
 		{ 0x1f, 0x0005 },
 		{ 0x05, 0xffc2 },
@@ -2473,6 +2478,7 @@ static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
 		{ 0x0d, 0xf880 },
 		{ 0x1f, 0x0000 }
 	};
+#endif
 
 	rtl_phy_write(ioaddr, phy_reg_init_0, ARRAY_SIZE(phy_reg_init_0));
 
@@ -2526,7 +2532,9 @@ static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
 	mdio_write(ioaddr, 0x1f, 0x0002);
 	mdio_patch(ioaddr, 0x0f, 0x0017);
 
+#ifdef CONFIG_BROKEN
 	rtl_phy_write(ioaddr, phy_reg_init_1, ARRAY_SIZE(phy_reg_init_1));
+#endif
 }
 
 static void rtl8168d_3_hw_phy_config(void __iomem *ioaddr)
