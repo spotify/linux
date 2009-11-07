@@ -1427,3 +1427,4 @@ MODULE_DESCRIPTION("TI wl1251 Wireles LAN Driver Core");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Kalle Valo <kalle.valo@nokia.com>");
 MODULE_ALIAS("spi:wl12xx");
+MODULE_FIRMWARE(WL1251_FW_NAME);
