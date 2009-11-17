@@ -61,7 +61,7 @@ static const struct alps_model_info alps_model_data[] = {
 	/* Dell Latitude E5500, E6400, E6500, Precision M4400 */
 	{ { 0x62, 0x02, 0x14 }, 0xcf, 0xcf,
 		ALPS_PASS | ALPS_DUALPOINT | ALPS_PS2_INTERLEAVED },
-	{ { 0x73, 0x02, 0x50 }, 0xcf, 0xcf, ALPS_FW_BK_1 },		  /* Dell Vostro 1400 */
+	{ { 0x73, 0x02, 0x50 }, 0xcf, 0xcf, ALPS_4BTN },		  /* Dell Vostro 1400 */
 };
 
 /*
@@ -239,6 +239,13 @@ static void alps_process_packet(struct psmouse *psmouse)
 	if (priv->i->flags & (ALPS_FW_BK_1 | ALPS_FW_BK_2)) {
 		input_report_key(dev, BTN_FORWARD, forward);
 		input_report_key(dev, BTN_BACK, back);
+	}
+
+	if (priv->i->flags & ALPS_4BTN) {
+		input_report_key(dev, BTN_0, packet[2] & 4);
+		input_report_key(dev, BTN_1, packet[0] & 0x10);
+		input_report_key(dev, BTN_2, packet[3] & 4);
+		input_report_key(dev, BTN_3, packet[0] & 0x20);
 	}
 
 	input_sync(dev);
@@ -687,6 +694,13 @@ int alps_init(struct psmouse *psmouse)
 	if (priv->i->flags & (ALPS_FW_BK_1 | ALPS_FW_BK_2)) {
 		dev1->keybit[BIT_WORD(BTN_FORWARD)] |= BIT_MASK(BTN_FORWARD);
 		dev1->keybit[BIT_WORD(BTN_BACK)] |= BIT_MASK(BTN_BACK);
+	}
+
+	if (priv->i->flags & ALPS_4BTN) {
+		dev1->keybit[BIT_WORD(BTN_0)] |= BIT_MASK(BTN_0);
+		dev1->keybit[BIT_WORD(BTN_1)] |= BIT_MASK(BTN_1);
+		dev1->keybit[BIT_WORD(BTN_2)] |= BIT_MASK(BTN_2);
+		dev1->keybit[BIT_WORD(BTN_3)] |= BIT_MASK(BTN_3);
 	}
 
 	snprintf(priv->phys, sizeof(priv->phys), "%s/input1", psmouse->ps2dev.serio->phys);
