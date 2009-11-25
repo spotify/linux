@@ -811,7 +811,7 @@ static int rtl8169_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 	struct rtl8169_private *tp = netdev_priv(dev);
 	void __iomem *ioaddr = tp->mmio_addr;
 	unsigned int i;
-	static struct {
+	static const struct {
 		u32 opt;
 		u16 reg;
 		u8  mask;
@@ -1294,7 +1294,7 @@ static void rtl8169_get_mac_version(struct rtl8169_private *tp,
 	 *
 	 * (RTL_R32(TxConfig) & 0x700000) == 0x200000 ? 8101Eb : 8101Ec
 	 */
-	const struct {
+	static const struct {
 		u32 mask;
 		u32 val;
 		int mac_version;
@@ -1368,7 +1368,7 @@ struct phy_reg {
 	u16 val;
 };
 
-static void rtl_phy_write(void __iomem *ioaddr, struct phy_reg *regs, int len)
+static void rtl_phy_write(void __iomem *ioaddr, const struct phy_reg *regs, int len)
 {
 	while (len-- > 0) {
 		mdio_write(ioaddr, regs->reg, regs->val);
@@ -1378,7 +1378,7 @@ static void rtl_phy_write(void __iomem *ioaddr, struct phy_reg *regs, int len)
 
 static void rtl8169s_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x06, 0x006e },
 		{ 0x08, 0x0708 },
@@ -1445,7 +1445,7 @@ static void rtl8169s_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8169sb_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0002 },
 		{ 0x01, 0x90d0 },
 		{ 0x1f, 0x0000 }
@@ -1474,7 +1474,7 @@ static void rtl8169scd_hw_phy_config_quirk(struct rtl8169_private *tp,
 static void rtl8169scd_hw_phy_config(struct rtl8169_private *tp,
 				     void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x04, 0x0000 },
 		{ 0x03, 0x00a1 },
@@ -1521,7 +1521,7 @@ static void rtl8169scd_hw_phy_config(struct rtl8169_private *tp,
 
 static void rtl8169sce_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x04, 0x0000 },
 		{ 0x03, 0x00a1 },
@@ -1574,7 +1574,7 @@ static void rtl8169sce_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168bb_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x10, 0xf41b },
 		{ 0x1f, 0x0000 }
 	};
@@ -1587,7 +1587,7 @@ static void rtl8168bb_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168bef_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x10, 0xf41b },
 		{ 0x1f, 0x0000 }
@@ -1598,7 +1598,7 @@ static void rtl8168bef_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168cp_1_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0000 },
 		{ 0x1d, 0x0f00 },
 		{ 0x1f, 0x0002 },
@@ -1611,7 +1611,7 @@ static void rtl8168cp_1_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168cp_2_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x1d, 0x3d98 },
 		{ 0x1f, 0x0000 }
@@ -1626,7 +1626,7 @@ static void rtl8168cp_2_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168c_1_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x12, 0x2300 },
 		{ 0x1f, 0x0002 },
@@ -1655,7 +1655,7 @@ static void rtl8168c_1_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168c_2_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x12, 0x2300 },
 		{ 0x03, 0x802f },
@@ -1683,7 +1683,7 @@ static void rtl8168c_2_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168c_3_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x12, 0x2300 },
 		{ 0x1d, 0x3d98 },
@@ -1710,7 +1710,7 @@ static void rtl8168c_4_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 {
-	static struct phy_reg phy_reg_init_0[] = {
+	static const struct phy_reg phy_reg_init_0[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x06, 0x4064 },
 		{ 0x07, 0x2863 },
@@ -1729,7 +1729,7 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 		{ 0x1a, 0x05ad },
 		{ 0x14, 0x94c0 }
 	};
-	static struct phy_reg phy_reg_init_1[] = {
+	static const struct phy_reg phy_reg_init_1[] = {
 		{ 0x1f, 0x0002 },
 		{ 0x06, 0x5561 },
 		{ 0x1f, 0x0005 },
@@ -1746,7 +1746,7 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 	rtl_phy_write(ioaddr, phy_reg_init_1, ARRAY_SIZE(phy_reg_init_1));
 
 	if (rtl8168d_efuse_read(ioaddr, 0x01) == 0xb1) {
-		struct phy_reg phy_reg_init[] = {
+		static const struct phy_reg phy_reg_init[] = {
 			{ 0x1f, 0x0002 },
 			{ 0x05, 0x669a },
 			{ 0x1f, 0x0005 },
@@ -1761,7 +1761,7 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 		val = mdio_read(ioaddr, 0x0d);
 
 		if ((val & 0x00ff) != 0x006c) {
-			u32 set[] = {
+			static const u32 set[] = {
 				0x0065, 0x0066, 0x0067, 0x0068,
 				0x0069, 0x006a, 0x006b, 0x006c
 			};
@@ -1774,7 +1774,7 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 				mdio_write(ioaddr, 0x0d, val | set[i]);
 		}
 	} else {
-		struct phy_reg phy_reg_init[] = {
+		static const struct phy_reg phy_reg_init[] = {
 			{ 0x1f, 0x0002 },
 			{ 0x05, 0x6662 },
 			{ 0x1f, 0x0005 },
@@ -1800,7 +1800,7 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
 {
-	static struct phy_reg phy_reg_init_0[] = {
+	static const struct phy_reg phy_reg_init_0[] = {
 		{ 0x1f, 0x0001 },
 		{ 0x06, 0x4064 },
 		{ 0x07, 0x2863 },
@@ -1829,7 +1829,7 @@ static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
 	rtl_phy_write(ioaddr, phy_reg_init_0, ARRAY_SIZE(phy_reg_init_0));
 
 	if (rtl8168d_efuse_read(ioaddr, 0x01) == 0xb1) {
-		struct phy_reg phy_reg_init[] = {
+		static const struct phy_reg phy_reg_init[] = {
 			{ 0x1f, 0x0002 },
 			{ 0x05, 0x669a },
 			{ 0x1f, 0x0005 },
@@ -1857,7 +1857,7 @@ static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
 				mdio_write(ioaddr, 0x0d, val | set[i]);
 		}
 	} else {
-		struct phy_reg phy_reg_init[] = {
+		static const struct phy_reg phy_reg_init[] = {
 			{ 0x1f, 0x0002 },
 			{ 0x05, 0x2642 },
 			{ 0x1f, 0x0005 },
@@ -1885,7 +1885,7 @@ static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8168d_3_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0002 },
 		{ 0x10, 0x0008 },
 		{ 0x0d, 0x006c },
@@ -1946,7 +1946,7 @@ static void rtl8168d_3_hw_phy_config(void __iomem *ioaddr)
 
 static void rtl8102e_hw_phy_config(void __iomem *ioaddr)
 {
-	struct phy_reg phy_reg_init[] = {
+	static const struct phy_reg phy_reg_init[] = {
 		{ 0x1f, 0x0003 },
 		{ 0x08, 0x441d },
 		{ 0x01, 0x9100 },
@@ -2766,7 +2766,7 @@ static void rtl_set_rx_max_size(void __iomem *ioaddr, unsigned int rx_buf_sz)
 
 static void rtl8169_set_magic_reg(void __iomem *ioaddr, unsigned mac_version)
 {
-	struct {
+	static const struct {
 		u32 mac_version;
 		u32 clk;
 		u32 val;
@@ -2890,7 +2890,7 @@ struct ephy_info {
 	u16 bits;
 };
 
-static void rtl_ephy_init(void __iomem *ioaddr, struct ephy_info *e, int len)
+static void rtl_ephy_init(void __iomem *ioaddr, const struct ephy_info *e, int len)
 {
 	u16 w;
 
@@ -2961,7 +2961,7 @@ static void __rtl_hw_start_8168cp(void __iomem *ioaddr, struct pci_dev *pdev)
 
 static void rtl_hw_start_8168cp_1(void __iomem *ioaddr, struct pci_dev *pdev)
 {
-	static struct ephy_info e_info_8168cp[] = {
+	static const struct ephy_info e_info_8168cp[] = {
 		{ 0x01, 0,	0x0001 },
 		{ 0x02, 0x0800,	0x1000 },
 		{ 0x03, 0,	0x0042 },
@@ -3005,7 +3005,7 @@ static void rtl_hw_start_8168cp_3(void __iomem *ioaddr, struct pci_dev *pdev)
 
 static void rtl_hw_start_8168c_1(void __iomem *ioaddr, struct pci_dev *pdev)
 {
-	static struct ephy_info e_info_8168c_1[] = {
+	static const struct ephy_info e_info_8168c_1[] = {
 		{ 0x02, 0x0800,	0x1000 },
 		{ 0x03, 0,	0x0002 },
 		{ 0x06, 0x0080,	0x0000 }
@@ -3022,7 +3022,7 @@ static void rtl_hw_start_8168c_1(void __iomem *ioaddr, struct pci_dev *pdev)
 
 static void rtl_hw_start_8168c_2(void __iomem *ioaddr, struct pci_dev *pdev)
 {
-	static struct ephy_info e_info_8168c_2[] = {
+	static const struct ephy_info e_info_8168c_2[] = {
 		{ 0x01, 0,	0x0001 },
 		{ 0x03, 0x0400,	0x0220 }
 	};
@@ -3166,7 +3166,7 @@ static void rtl_hw_start_8168(struct net_device *dev)
 
 static void rtl_hw_start_8102e_1(void __iomem *ioaddr, struct pci_dev *pdev)
 {
-	static struct ephy_info e_info_8102e_1[] = {
+	static const struct ephy_info e_info_8102e_1[] = {
 		{ 0x01,	0, 0x6e65 },
 		{ 0x02,	0, 0x091f },
 		{ 0x03,	0, 0xc2f9 },
