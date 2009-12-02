@@ -544,10 +544,17 @@ next_desc:
 static void e1000_put_txbuf(struct e1000_adapter *adapter,
 			     struct e1000_buffer *buffer_info)
 {
-	buffer_info->dma = 0;
+	if (buffer_info->dma) {
+		if (buffer_info->mapped_as_page)
+			pci_unmap_page(adapter->pdev, buffer_info->dma,
+				       buffer_info->length, PCI_DMA_TODEVICE);
+		else
+			pci_unmap_single(adapter->pdev,	buffer_info->dma,
+					 buffer_info->length,
+					 PCI_DMA_TODEVICE);
+		buffer_info->dma = 0;
+	}
 	if (buffer_info->skb) {
-		skb_dma_unmap(&adapter->pdev->dev, buffer_info->skb,
-		              DMA_TO_DEVICE);
 		dev_kfree_skb_any(buffer_info->skb);
 		buffer_info->skb = NULL;
 	}
@@ -3896,22 +3903,13 @@ static int e1000_tx_map(struct e1000_adapter *adapter,
 			unsigned int mss)
 {
 	struct e1000_ring *tx_ring = adapter->tx_ring;
+	struct pci_dev *pdev = adapter->pdev;
 	struct e1000_buffer *buffer_info;
 	unsigned int len = skb_headlen(skb);
-	unsigned int offset, size, count = 0, i;
+	unsigned int offset = 0, size, count = 0, i;
 	unsigned int f;
-	dma_addr_t *map;
 
 	i = tx_ring->next_to_use;
-
-	if (skb_dma_map(&adapter->pdev->dev, skb, DMA_TO_DEVICE)) {
-		dev_err(&adapter->pdev->dev, "TX DMA map failed\n");
-		adapter->tx_dma_failed++;
-		return 0;
-	}
-
-	map = skb_shinfo(skb)->dma_maps;
-	offset = 0;
 
 	while (len) {
 		buffer_info = &tx_ring->buffer_info[i];
@@ -3920,11 +3918,15 @@ static int e1000_tx_map(struct e1000_adapter *adapter,
 		buffer_info->length = size;
 		buffer_info->time_stamp = jiffies;
 		buffer_info->next_to_watch = i;
-		buffer_info->dma = skb_shinfo(skb)->dma_head + offset;
-		count++;
+		buffer_info->dma = pci_map_single(pdev,	skb->data + offset,
+						  size,	PCI_DMA_TODEVICE);
+		buffer_info->mapped_as_page = false;
+		if (pci_dma_mapping_error(pdev, buffer_info->dma))
+			goto dma_error;
 
 		len -= size;
 		offset += size;
+		count++;
 
 		if (len) {
 			i++;
@@ -3938,7 +3940,7 @@ static int e1000_tx_map(struct e1000_adapter *adapter,
 
 		frag = &skb_shinfo(skb)->frags[f];
 		len = frag->size;
-		offset = 0;
+		offset = frag->page_offset;
 
 		while (len) {
 			i++;
@@ -3951,7 +3953,12 @@ static int e1000_tx_map(struct e1000_adapter *adapter,
 			buffer_info->length = size;
 			buffer_info->time_stamp = jiffies;
 			buffer_info->next_to_watch = i;
-			buffer_info->dma = map[f] + offset;
+			buffer_info->dma = pci_map_page(pdev, frag->page,
+							offset, size,
+							PCI_DMA_TODEVICE);
+			buffer_info->mapped_as_page = true;
+			if (pci_dma_mapping_error(pdev, buffer_info->dma))
+				goto dma_error;
 
 			len -= size;
 			offset += size;
@@ -3963,6 +3970,22 @@ static int e1000_tx_map(struct e1000_adapter *adapter,
 	tx_ring->buffer_info[first].next_to_watch = i;
 
 	return count;
+
+dma_error:
+	dev_err(&pdev->dev, "TX DMA map failed\n");
+	buffer_info->dma = 0;
+	count--;
+
+	while (count >= 0) {
+		count--;
+		i--;
+		if (i < 0)
+			i += tx_ring->count;
+		buffer_info = &tx_ring->buffer_info[i];
+		e1000_put_txbuf(adapter, buffer_info);;
+	}
+
+	return 0;
 }
 
 static void e1000_tx_queue(struct e1000_adapter *adapter,
