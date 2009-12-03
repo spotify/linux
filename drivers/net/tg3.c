@@ -14483,7 +14483,7 @@ static int __devinit tg3_init_one(struct pci_dev *pdev,
 	if (err) {
 		printk(KERN_ERR PFX "Could not obtain valid ethernet address, "
 		       "aborting.\n");
-		goto err_out_fw;
+		goto err_out_iounmap;
 	}
 
 	if (tp->tg3_flags3 & TG3_FLG3_ENABLE_APE) {
@@ -14492,7 +14492,7 @@ static int __devinit tg3_init_one(struct pci_dev *pdev,
 			printk(KERN_ERR PFX "Cannot map APE registers, "
 			       "aborting.\n");
 			err = -ENOMEM;
-			goto err_out_fw;
+			goto err_out_iounmap;
 		}
 
 		tg3_ape_lock_init(tp);
@@ -14622,10 +14622,6 @@ err_out_apeunmap:
 		iounmap(tp->aperegs);
 		tp->aperegs = NULL;
 	}
-
-err_out_fw:
-	if (tp->fw)
-		release_firmware(tp->fw);
 
 err_out_iounmap:
 	if (tp->regs) {
