@@ -77,3 +77,4 @@ obj-$(CONFIG_DVB_STV0900) += stv0900.o
 obj-$(CONFIG_DVB_STV090x) += stv090x.o
 obj-$(CONFIG_DVB_STV6110x) += stv6110x.o
 obj-$(CONFIG_DVB_ISL6423) += isl6423.o
+obj-$(CONFIG_DVB_MB86A16) += mb86a16.o
