@@ -71,6 +71,8 @@ struct switch_stack {
 #define PTRACE_GETFPREGS          14
 #define PTRACE_SETFPREGS          15
 
+#define PTRACE_GET_THREAD_AREA    25
+
 #ifdef __KERNEL__
 
 #ifndef PS_S
