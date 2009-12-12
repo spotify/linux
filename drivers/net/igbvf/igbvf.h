@@ -275,6 +275,7 @@ struct igbvf_adapter {
 	unsigned long led_status;
 
 	unsigned int flags;
+	unsigned long last_reset;
 };
 
 struct igbvf_info {
