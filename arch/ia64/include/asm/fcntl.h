@@ -5,6 +5,8 @@
  *	David Mosberger-Tang <davidm@hpl.hp.com>, Hewlett-Packard Co.
  */
 
+#include <linux/personality.h>
+
 #define force_o_largefile()	\
 		(personality(current->personality) != PER_LINUX32)
 
