@@ -4680,6 +4680,7 @@ static int e1000_resume(struct pci_dev *pdev)
 
 	pci_set_power_state(pdev, PCI_D0);
 	pci_restore_state(pdev);
+	pci_save_state(pdev);
 	e1000e_disable_l1aspm(pdev);
 
 	err = pci_enable_device_mem(pdev);
@@ -4831,6 +4832,7 @@ static pci_ers_result_t e1000_io_slot_reset(struct pci_dev *pdev)
 	} else {
 		pci_set_master(pdev);
 		pci_restore_state(pdev);
+		pci_save_state(pdev);
 
 		pci_enable_wake(pdev, PCI_D3hot, 0);
 		pci_enable_wake(pdev, PCI_D3cold, 0);
