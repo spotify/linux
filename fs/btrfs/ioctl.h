@@ -36,6 +36,20 @@ struct btrfs_ioctl_clone_range_args {
   __u64 dest_offset;
 };
 
+#ifndef __GENKSYMS__
+struct btrfs_ioctl_space_info {
+	u64 flags;
+	u64 total_bytes;
+	u64 used_bytes;
+};
+
+struct btrfs_ioctl_space_args {
+	u64 space_slots;
+	u64 total_spaces;
+	struct btrfs_ioctl_space_info spaces[0];
+};
+#endif
+
 #define BTRFS_IOC_SNAP_CREATE _IOW(BTRFS_IOCTL_MAGIC, 1, \
 				   struct btrfs_ioctl_vol_args)
 #define BTRFS_IOC_DEFRAG _IOW(BTRFS_IOCTL_MAGIC, 2, \
@@ -67,4 +81,6 @@ struct btrfs_ioctl_clone_range_args {
 				   struct btrfs_ioctl_vol_args)
 #define BTRFS_IOC_SNAP_DESTROY _IOW(BTRFS_IOCTL_MAGIC, 15, \
 				struct btrfs_ioctl_vol_args)
+#define BTRFS_IOC_SPACE_INFO _IOWR(BTRFS_IOCTL_MAGIC, 20, \
+				    struct btrfs_ioctl_space_args)
 #endif
