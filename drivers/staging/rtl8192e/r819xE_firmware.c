@@ -350,3 +350,7 @@ download_firmware_fail:
 	return rt_status;
 
 }
+
+MODULE_FIRMWARE("RTL8192E/boot.img");
+MODULE_FIRMWARE("RTL8192E/main.img");
+MODULE_FIRMWARE("RTL8192E/data.img");

@@ -1861,6 +1861,9 @@ static int slic_card_download_gbrcv(struct adapter *adapter)
 	return 0;
 }
 
+MODULE_FIRMWARE("slicoss/oasisrcvucode.sys");
+MODULE_FIRMWARE("slicoss/gbrcvucode.sys");
+
 static int slic_card_download(struct adapter *adapter)
 {
 	const struct firmware *fw;
@@ -1971,6 +1974,9 @@ static int slic_card_download(struct adapter *adapter)
 
 	return STATUS_SUCCESS;
 }
+
+MODULE_FIRMWARE("slicoss/oasisdownload.sys");
+MODULE_FIRMWARE("slicoss/gbdownload.sys");
 
 static void slic_adapter_set_hwaddr(struct adapter *adapter)
 {
