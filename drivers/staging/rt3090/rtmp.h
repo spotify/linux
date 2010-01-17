@@ -2202,6 +2202,7 @@ struct _RTMP_ADAPTER
 	PVOID					OS_Cookie;	// save specific structure relative to OS
 	PNET_DEV				net_dev;
 	ULONG					VirtualIfCnt;
+	const struct firmware			*firmware;
 
 	RTMP_CHIP_OP			chipOps;
 	USHORT					ThisTbttNumToNextWakeUp;
