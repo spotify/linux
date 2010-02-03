@@ -14,6 +14,8 @@
 #include <linux/mtd/partitions.h>
 #include <linux/ata_platform.h>
 #include <linux/mv643xx_eth.h>
+#include <linux/io.h>
+#include <linux/gpio.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/kirkwood.h>
@@ -50,9 +52,37 @@ static struct mvsdio_platform_data openrd_base_mvsdio_data = {
 };
 
 static unsigned int openrd_base_mpp_config[] __initdata = {
+	MPP12_SD_CLK,
+	MPP13_SD_CMD,
+	MPP14_SD_D0,
+	MPP15_SD_D1,
+	MPP16_SD_D2,
+	MPP17_SD_D3,
+	MPP29_GPIO,
 	MPP29_GPIO,
 	0
 };
+
+static int uart1;
+
+static void sd_uart_selection(void)
+{
+	char *ptr = NULL;
+
+	/* Parse boot_command_line string uart=no/232 */
+	ptr = strstr(boot_command_line, "uart=");
+
+	/* Default is SD. Change if required, for UART */
+	if (ptr != NULL) {
+		if (!strncmp(ptr + 5, "232", 3)) {
+			/* Configure MPP for UART */
+			openrd_base_mpp_config[1] = MPP13_UART1_TXD;
+			openrd_base_mpp_config[2] = MPP14_UART1_RXD;
+
+			uart1 = 232;
+		}
+	}
+}
 
 static void __init openrd_base_init(void)
 {
@@ -60,6 +90,10 @@ static void __init openrd_base_init(void)
 	 * Basic setup. Needs to be called early.
 	 */
 	kirkwood_init();
+
+	/* This function modifies MPP config according to boot argument */
+	sd_uart_selection();
+
 	kirkwood_mpp_conf(openrd_base_mpp_config);
 
 	kirkwood_uart0_init();
@@ -69,7 +103,20 @@ static void __init openrd_base_init(void)
 
 	kirkwood_ge00_init(&openrd_base_ge00_data);
 	kirkwood_sata_init(&openrd_base_sata_data);
-	kirkwood_sdio_init(&openrd_base_mvsdio_data);
+
+	if (!uart1) {
+		/* Select SD
+		 * Pin # 34: 0 => UART1, 1 => SD */
+		writel(readl(GPIO_OUT(34)) | 4, GPIO_OUT(34));
+
+		kirkwood_sdio_init(&openrd_base_mvsdio_data);
+	} else {
+		/* Select UART1
+		 * Pin # 34: 0 => UART1, 1 => SD */
+		writel(readl(GPIO_OUT(34)) & ~(4), GPIO_OUT(34));
+
+		kirkwood_uart1_init();
+	}
 
 	kirkwood_i2c_init();
 }
