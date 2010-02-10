@@ -2133,6 +2133,14 @@ special_insn:
 		}
 		break;
 	case 0xf4:              /* hlt */
+		if (c->lock_prefix) {
+			kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+			goto done;
+		}
+		if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+			kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
 		ctxt->vcpu->arch.halt_request = 1;
 		break;
 	case 0xf5:	/* cmc */
@@ -2208,6 +2216,11 @@ twobyte_insn:
 			if (c->modrm_mod != 3 || c->modrm_rm != 1)
 				goto cannot_emulate;
 
+			if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+				kvm_inject_gp(ctxt->vcpu, 0);
+				goto done;
+			}
+
 			rc = kvm_fix_hypercall(ctxt->vcpu);
 			if (rc)
 				goto done;
@@ -2218,6 +2231,16 @@ twobyte_insn:
 			c->dst.type = OP_NONE;
 			break;
 		case 2: /* lgdt */
+			if (c->lock_prefix) {
+				kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+				goto done;
+			}
+
+			if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+				kvm_inject_gp(ctxt->vcpu, 0);
+				goto done;
+			}
+
 			rc = read_descriptor(ctxt, ops, c->src.ptr,
 					     &size, &address, c->op_bytes);
 			if (rc)
@@ -2230,6 +2253,10 @@ twobyte_insn:
 			if (c->modrm_mod == 3) {
 				switch (c->modrm_rm) {
 				case 1:
+					if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+						kvm_inject_gp(ctxt->vcpu, 0);
+						goto done;
+					}
 					rc = kvm_fix_hypercall(ctxt->vcpu);
 					if (rc)
 						goto done;
@@ -2238,6 +2265,16 @@ twobyte_insn:
 					goto cannot_emulate;
 				}
 			} else {
+				if (c->lock_prefix) {
+					kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+					goto done;
+				}
+
+				if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+					kvm_inject_gp(ctxt->vcpu, 0);
+					goto done;
+				}
+
 				rc = read_descriptor(ctxt, ops, c->src.ptr,
 						     &size, &address,
 						     c->op_bytes);
@@ -2253,11 +2290,26 @@ twobyte_insn:
 			c->dst.val = realmode_get_cr(ctxt->vcpu, 0);
 			break;
 		case 6: /* lmsw */
+			if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+				kvm_inject_gp(ctxt->vcpu, 0);
+				goto done;
+			}
+
 			realmode_lmsw(ctxt->vcpu, (u16)c->src.val,
 				      &ctxt->eflags);
 			c->dst.type = OP_NONE;
 			break;
 		case 7: /* invlpg*/
+			if (c->lock_prefix) {
+				kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+				goto done;
+			}
+
+			if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+				kvm_inject_gp(ctxt->vcpu, 0);
+				goto done;
+			}
+
 			emulate_invlpg(ctxt->vcpu, memop);
 			/* Disable writeback. */
 			c->dst.type = OP_NONE;
@@ -2273,23 +2325,67 @@ twobyte_insn:
 			goto writeback;
 		break;
 	case 0x06:
+		if (c->lock_prefix) {
+			if (ctxt->mode == X86EMUL_MODE_REAL ||
+			    !(ctxt->vcpu->arch.cr0 & X86_CR0_PE))
+				kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+			else
+				kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
+
+		if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+			kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
+
 		emulate_clts(ctxt->vcpu);
 		c->dst.type = OP_NONE;
 		break;
 	case 0x08:		/* invd */
 	case 0x09:		/* wbinvd */
+		if (c->lock_prefix) {
+			kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+			goto done;
+		}
+
+		if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+			kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
 	case 0x0d:		/* GrpP (prefetch) */
 	case 0x18:		/* Grp16 (prefetch/nop) */
 		c->dst.type = OP_NONE;
 		break;
 	case 0x20: /* mov cr, reg */
+		if (c->lock_prefix) {
+			kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+			goto done;
+		}
+
+		if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+			kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
+
 		if (c->modrm_mod != 3)
 			goto cannot_emulate;
+
 		c->regs[c->modrm_rm] =
 				realmode_get_cr(ctxt->vcpu, c->modrm_reg);
 		c->dst.type = OP_NONE;	/* no writeback */
 		break;
 	case 0x21: /* mov from dr to reg */
+		if (c->lock_prefix) {
+			kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+			goto done;
+		}
+
+		if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+			kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
+
 		if (c->modrm_mod != 3)
 			goto cannot_emulate;
 		rc = emulator_get_dr(ctxt, c->modrm_reg, &c->regs[c->modrm_rm]);
@@ -2298,6 +2394,16 @@ twobyte_insn:
 		c->dst.type = OP_NONE;	/* no writeback */
 		break;
 	case 0x22: /* mov reg, cr */
+		if (c->lock_prefix) {
+			kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+			goto done;
+		}
+
+		if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+			kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
+
 		if (c->modrm_mod != 3)
 			goto cannot_emulate;
 		realmode_set_cr(ctxt->vcpu,
@@ -2305,6 +2411,16 @@ twobyte_insn:
 		c->dst.type = OP_NONE;
 		break;
 	case 0x23: /* mov from reg to dr */
+		if (c->lock_prefix) {
+			kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+			goto done;
+		}
+
+		if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+			kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
+
 		if (c->modrm_mod != 3)
 			goto cannot_emulate;
 		rc = emulator_set_dr(ctxt, c->modrm_reg,
@@ -2315,6 +2431,16 @@ twobyte_insn:
 		break;
 	case 0x30:
 		/* wrmsr */
+		if (c->lock_prefix) {
+			kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+			goto done;
+		}
+
+		if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+			kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
+
 		msr_data = (u32)c->regs[VCPU_REGS_RAX]
 			| ((u64)c->regs[VCPU_REGS_RDX] << 32);
 		rc = kvm_set_msr(ctxt->vcpu, c->regs[VCPU_REGS_RCX], msr_data);
@@ -2327,6 +2453,16 @@ twobyte_insn:
 		break;
 	case 0x32:
 		/* rdmsr */
+		if (c->lock_prefix) {
+			kvm_queue_exception(ctxt->vcpu, UD_VECTOR);
+			goto done;
+		}
+
+		if (kvm_x86_ops->get_cpl(ctxt->vcpu)) {
+			kvm_inject_gp(ctxt->vcpu, 0);
+			goto done;
+		}
+
 		rc = kvm_get_msr(ctxt->vcpu, c->regs[VCPU_REGS_RCX], &msr_data);
 		if (rc) {
 			kvm_inject_gp(ctxt->vcpu, 0);
