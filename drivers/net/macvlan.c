@@ -46,6 +46,47 @@ struct macvlan_dev {
 	struct net_device	*lowerdev;
 };
 
+/* From 2.6.33 net/core/dev.c */
+static int dev_forward_skb(struct net_device *dev, struct sk_buff *skb)
+{
+	skb_orphan(skb);
+
+	if (!(dev->flags & IFF_UP))
+		return NET_RX_DROP;
+
+	if (skb->len > (dev->mtu + dev->hard_header_len))
+		return NET_RX_DROP;
+
+	skb_dst_drop(skb);
+	skb->tstamp.tv64 = 0;
+	skb->pkt_type = PACKET_HOST;
+	skb->protocol = eth_type_trans(skb, dev);
+	skb->mark = 0;
+	secpath_reset(skb);
+	nf_reset(skb);
+	return netif_rx(skb);
+}
+
+/* From 2.6.33 net/core/dev.c */
+static void dev_txq_stats_fold(const struct net_device *dev,
+			       struct net_device_stats *stats)
+{
+	unsigned long tx_bytes = 0, tx_packets = 0, tx_dropped = 0;
+	unsigned int i;
+	struct netdev_queue *txq;
+
+	for (i = 0; i < dev->num_tx_queues; i++) {
+		txq = netdev_get_tx_queue(dev, i);
+		tx_bytes   += txq->tx_bytes;
+		tx_packets += txq->tx_packets;
+		tx_dropped += txq->tx_dropped;
+	}
+	if (tx_bytes || tx_packets || tx_dropped) {
+		stats->tx_bytes   = tx_bytes;
+		stats->tx_packets = tx_packets;
+		stats->tx_dropped = tx_dropped;
+	}
+}
 
 static struct macvlan_dev *macvlan_hash_lookup(const struct macvlan_port *port,
 					       const unsigned char *addr)
