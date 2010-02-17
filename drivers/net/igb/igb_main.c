@@ -498,6 +498,12 @@ static void igb_assign_vector(struct igb_q_vector *q_vector, int msix_vector)
 		BUG();
 		break;
 	}
+
+	/* add q_vector eims value to global eims_enable_mask */
+	adapter->eims_enable_mask |= q_vector->eims_value;
+
+	/* configure q_vector to set itr on first interrupt */
+	q_vector->set_itr = 1;
 }
 
 /**
@@ -555,11 +561,8 @@ static void igb_configure_msix(struct igb_adapter *adapter)
 
 	adapter->eims_enable_mask |= adapter->eims_other;
 
-	for (i = 0; i < adapter->num_q_vectors; i++) {
-		struct igb_q_vector *q_vector = adapter->q_vector[i];
-		igb_assign_vector(q_vector, vector++);
-		adapter->eims_enable_mask |= q_vector->eims_value;
-	}
+	for (i = 0; i < adapter->num_q_vectors; i++)
+		igb_assign_vector(adapter->q_vector[i], vector++);
 
 	wrfl();
 }
@@ -750,10 +753,8 @@ static int igb_alloc_q_vectors(struct igb_adapter *adapter)
 		if (!q_vector)
 			goto err_out;
 		q_vector->adapter = adapter;
-		q_vector->itr_shift = (hw->mac.type == e1000_82575) ? 16 : 0;
 		q_vector->itr_register = hw->hw_addr + E1000_EITR(0);
 		q_vector->itr_val = IGB_START_ITR;
-		q_vector->set_itr = 1;
 		netif_napi_add(adapter->netdev, &q_vector->napi, igb_poll, 64);
 		adapter->q_vector[v_idx] = q_vector;
 	}
@@ -4127,6 +4128,7 @@ static irqreturn_t igb_msix_other(int irq, void *data)
 
 static void igb_write_itr(struct igb_q_vector *q_vector)
 {
+	struct igb_adapter *adapter = q_vector->adapter;
 	u32 itr_val = q_vector->itr_val & 0x7FFC;
 
 	if (!q_vector->set_itr)
@@ -4135,8 +4137,8 @@ static void igb_write_itr(struct igb_q_vector *q_vector)
 	if (!itr_val)
 		itr_val = 0x4;
 
-	if (q_vector->itr_shift)
-		itr_val |= itr_val << q_vector->itr_shift;
+	if (adapter->hw.mac.type == e1000_82575)
+		itr_val |= itr_val << 16;
 	else
 		itr_val |= 0x8000000;
 
@@ -4213,9 +4215,8 @@ static void igb_setup_dca(struct igb_adapter *adapter)
 	wr32(E1000_DCA_CTRL, E1000_DCA_CTRL_DCA_MODE_CB2);
 
 	for (i = 0; i < adapter->num_q_vectors; i++) {
-		struct igb_q_vector *q_vector = adapter->q_vector[i];
-		q_vector->cpu = -1;
-		igb_update_dca(q_vector);
+		adapter->q_vector[i]->cpu = -1;
+		igb_update_dca(adapter->q_vector[i]);
 	}
 }
 
