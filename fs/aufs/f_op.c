@@ -604,11 +604,8 @@ static int aufs_mmap(struct file *file, struct vm_area_struct *vma)
 	up_write(&current->mm->mmap_sem);
 	si_read_lock(sb, AuLock_FLUSH);
 	err = au_reval_and_lock_fdi(file, au_reopen_nondir, /*wlock*/1);
-	if (unlikely(err)) {
-		down_write(&current->mm->mmap_sem);
-		unlock_kernel();
+	if (unlikely(err))
 		goto out;
-	}
 
 	mmapped = !!au_test_mmapped(file);
 	if (wlock) {
@@ -616,16 +613,11 @@ static int aufs_mmap(struct file *file, struct vm_area_struct *vma)
 
 		err = au_ready_to_write(file, -1, &pin);
 		di_downgrade_lock(dentry, AuLock_IR);
-		if (unlikely(err)) {
-			down_write(&current->mm->mmap_sem);
-			unlock_kernel();
+		if (unlikely(err))
 			goto out_unlock;
-		}
 		au_unpin(&pin);
 	} else
 		di_downgrade_lock(dentry, AuLock_IR);
-	down_write(&current->mm->mmap_sem);
-	unlock_kernel();
 
 	h_file = au_h_fptr(file, au_fbstart(file));
 	if (!mmapped && au_test_fs_bad_mapping(h_file->f_dentry->d_sb)) {
@@ -677,6 +669,8 @@ static int aufs_mmap(struct file *file, struct vm_area_struct *vma)
 	fi_write_unlock(file);
  out:
 	si_read_unlock(sb);
+	down_write(&current->mm->mmap_sem);
+	unlock_kernel();
 	return err;
 }
 
