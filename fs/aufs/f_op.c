@@ -26,7 +26,6 @@
 #include <linux/mman.h>
 #include <linux/mm.h>
 #include <linux/security.h>
-#include <linux/smp_lock.h>
 #include "aufs.h"
 
 /* common function to regular file and dir */
@@ -590,18 +589,6 @@ static int aufs_mmap(struct file *file, struct vm_area_struct *vma)
 	dentry = file->f_dentry;
 	wlock = !!(file->f_mode & FMODE_WRITE) && (vma->vm_flags & VM_SHARED);
 	sb = dentry->d_sb;
-	/*
-	 * Very ugly BKL approach to keep the order of locks.
-	 * Here mm->mmap_sem is acquired by our caller.
-	 *
-	 * native readdir, i_mutex, copy_to_user, mmap_sem
-	 * aufs readdir, i_mutex, rwsem, nested-i_mutex, copy_to_user, mmap_sem
-	 * aufs mmap, mmap_sem, rwsem
-	 *
-	 * Unlock it temporary.
-	 */
-	lock_kernel();
-	up_write(&current->mm->mmap_sem);
 	si_read_lock(sb, AuLock_FLUSH);
 	err = au_reval_and_lock_fdi(file, au_reopen_nondir, /*wlock*/1);
 	if (unlikely(err))
@@ -669,8 +656,6 @@ static int aufs_mmap(struct file *file, struct vm_area_struct *vma)
 	fi_write_unlock(file);
  out:
 	si_read_unlock(sb);
-	down_write(&current->mm->mmap_sem);
-	unlock_kernel();
 	return err;
 }
 
