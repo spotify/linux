@@ -601,30 +601,41 @@ File: cis/LA-PCM.cis
       cis/NE2K.cis
       cis/tamarack.cis
       cis/PE-200.cis
+Source: cis/src/LA-PCM.cis
+Source: cis/src/PCMLM28.cis
+Source: cis/src/DP83903.cis
+Source: cis/src/NE2K.cis
+Source: cis/src/tamarack.cis
+Source: cis/src/PE-200.cis
 
-Licence: GPL
+Licence: Dual GPLv2/MPL
 
 Originally developed by the pcmcia-cs project
+Copyright (C) 1998, 1999, 2000 David A. Hinds
 
 --------------------------------------------------------------------------
 
 Driver: PCMCIA_3C589 - 3Com PCMCIA adapter
 
 File: cis/3CXEM556.cis
+Source: cis/src/3CXEM556.cis
 
-Licence: GPL
+Licence: Dual GPLv2/MPL
 
 Originally developed by the pcmcia-cs project
+Copyright (C) 1998, 1999, 2000 David A. Hinds
 
 --------------------------------------------------------------------------
 
 Driver: PCMCIA_3C574 - 3Com PCMCIA adapter
 
 File: cis/3CCFEM556.cis
+Source: cis/src/3CCFEM556.cis
 
-Licence: GPL
+Licence: Dual GPLv2/MPL
 
 Originally developed by the pcmcia-cs project
+Copyright (C) 1998, 1999, 2000 David A. Hinds
 
 --------------------------------------------------------------------------
 
@@ -634,10 +645,15 @@ File: cis/MT5634ZLX.cis
       cis/RS-COM-2P.cis
       cis/COMpad2.cis
       cis/COMpad4.cis
+Source: cis/src/MT5634ZLX.cis
+Source: cis/src/RS-COM-2P.cis
+Source: cis/src/COMpad2.cis
+Source: cis/src/COMpad4.cis
 
-Licence: GPL
+Licence: Dual GPLv2/MPL
 
 Originally developed by the pcmcia-cs project
+Copyright (C) 1998, 1999, 2000 David A. Hinds
 
 --------------------------------------------------------------------------
 
