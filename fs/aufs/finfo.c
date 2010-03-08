@@ -57,6 +57,23 @@ void au_update_figen(struct file *file)
 
 /* ---------------------------------------------------------------------- */
 
+void au_fi_mmap_lock(struct file *file)
+{
+	FiMustWriteLock(file);
+	lockdep_off();
+	mutex_lock(&au_fi(file)->fi_mmap);
+	lockdep_on();
+}
+
+void au_fi_mmap_unlock(struct file *file)
+{
+	lockdep_off();
+	mutex_unlock(&au_fi(file)->fi_mmap);
+	lockdep_on();
+}
+
+/* ---------------------------------------------------------------------- */
+
 void au_finfo_fin(struct file *file)
 {
 	struct au_finfo *finfo;

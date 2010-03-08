@@ -50,6 +50,7 @@ struct au_finfo {
 			struct vm_operations_struct	*fi_h_vm_ops;
 			struct vm_operations_struct	*fi_vm_ops;
 			struct mutex			fi_vm_mtx;
+			struct mutex			fi_mmap;
 		};
 
 		/* dir only */
@@ -103,6 +104,8 @@ void au_set_h_fptr(struct file *file, aufs_bindex_t bindex,
 		   struct file *h_file);
 
 void au_update_figen(struct file *file);
+void au_fi_mmap_lock(struct file *file);
+void au_fi_mmap_unlock(struct file *file);
 
 void au_finfo_fin(struct file *file);
 int au_finfo_init(struct file *file);
