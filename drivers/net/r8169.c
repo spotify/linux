@@ -23,6 +23,7 @@
 #include <linux/tcp.h>
 #include <linux/init.h>
 #include <linux/dma-mapping.h>
+#include <linux/pm_runtime.h>
 #include <linux/pci-aspm.h>
 
 #include <asm/system.h>
@@ -510,6 +511,7 @@ struct rtl8169_private {
 
 	struct mii_if_info mii;
 	struct rtl8169_counters counters;
+	u32 saved_wolopts;
 };
 
 MODULE_AUTHOR("Realtek and the Linux r8169 crew <netdev@vger.kernel.org>");
@@ -760,53 +762,61 @@ static void rtl8169_check_link_status(struct net_device *dev,
 
 	spin_lock_irqsave(&tp->lock, flags);
 	if (tp->link_ok(ioaddr)) {
+		/* This is to cancel a scheduled suspend if there's one. */
+		pm_request_resume(&tp->pci_dev->dev);
 		netif_carrier_on(dev);
 		netif_info(tp, ifup, dev, "link up\n");
 	} else {
 		netif_carrier_off(dev);
 		netif_info(tp, ifdown, dev, "link down\n");
+		pm_schedule_suspend(&tp->pci_dev->dev, 100);
 	}
 	spin_unlock_irqrestore(&tp->lock, flags);
+}
+
+#define WAKE_ANY (WAKE_PHY | WAKE_MAGIC | WAKE_UCAST | WAKE_BCAST | WAKE_MCAST)
+
+static u32 __rtl8169_get_wol(struct rtl8169_private *tp)
+{
+	void __iomem *ioaddr = tp->mmio_addr;
+	u8 options;
+	u32 wolopts = 0;
+
+	options = RTL_R8(Config1);
+	if (!(options & PMEnable))
+		return 0;
+
+	options = RTL_R8(Config3);
+	if (options & LinkUp)
+		wolopts |= WAKE_PHY;
+	if (options & MagicPacket)
+		wolopts |= WAKE_MAGIC;
+
+	options = RTL_R8(Config5);
+	if (options & UWF)
+		wolopts |= WAKE_UCAST;
+	if (options & BWF)
+		wolopts |= WAKE_BCAST;
+	if (options & MWF)
+		wolopts |= WAKE_MCAST;
+
+	return wolopts;
 }
 
 static void rtl8169_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 {
 	struct rtl8169_private *tp = netdev_priv(dev);
-	void __iomem *ioaddr = tp->mmio_addr;
-	u8 options;
-
-	wol->wolopts = 0;
-
-#define WAKE_ANY (WAKE_PHY | WAKE_MAGIC | WAKE_UCAST | WAKE_BCAST | WAKE_MCAST)
-	wol->supported = WAKE_ANY;
 
 	spin_lock_irq(&tp->lock);
 
-	options = RTL_R8(Config1);
-	if (!(options & PMEnable))
-		goto out_unlock;
+	wol->supported = WAKE_ANY;
+	wol->wolopts = __rtl8169_get_wol(tp);
 
-	options = RTL_R8(Config3);
-	if (options & LinkUp)
-		wol->wolopts |= WAKE_PHY;
-	if (options & MagicPacket)
-		wol->wolopts |= WAKE_MAGIC;
-
-	options = RTL_R8(Config5);
-	if (options & UWF)
-		wol->wolopts |= WAKE_UCAST;
-	if (options & BWF)
-		wol->wolopts |= WAKE_BCAST;
-	if (options & MWF)
-		wol->wolopts |= WAKE_MCAST;
-
-out_unlock:
 	spin_unlock_irq(&tp->lock);
 }
 
-static int rtl8169_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
+static void __rtl8169_set_wol(struct rtl8169_private *tp, u32 wolopts)
 {
-	struct rtl8169_private *tp = netdev_priv(dev);
 	void __iomem *ioaddr = tp->mmio_addr;
 	unsigned int i;
 	static const struct {
@@ -823,23 +833,29 @@ static int rtl8169_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 		{ WAKE_ANY,   Config5, LanWake }
 	};
 
-	spin_lock_irq(&tp->lock);
-
 	RTL_W8(Cfg9346, Cfg9346_Unlock);
 
 	for (i = 0; i < ARRAY_SIZE(cfg); i++) {
 		u8 options = RTL_R8(cfg[i].reg) & ~cfg[i].mask;
-		if (wol->wolopts & cfg[i].opt)
+		if (wolopts & cfg[i].opt)
 			options |= cfg[i].mask;
 		RTL_W8(cfg[i].reg, options);
 	}
 
 	RTL_W8(Cfg9346, Cfg9346_Lock);
+}
+
+static int rtl8169_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
+{
+	struct rtl8169_private *tp = netdev_priv(dev);
+
+	spin_lock_irq(&tp->lock);
 
 	if (wol->wolopts)
 		tp->features |= RTL_FEATURE_WOL;
 	else
 		tp->features &= ~RTL_FEATURE_WOL;
+	__rtl8169_set_wol(tp, wol->wolopts);
 	device_set_wakeup_enable(&tp->pci_dev->dev, wol->wolopts);
 
 	spin_unlock_irq(&tp->lock);
@@ -2546,6 +2562,12 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	device_set_wakeup_enable(&pdev->dev, tp->features & RTL_FEATURE_WOL);
 
+	if (pci_dev_run_wake(pdev)) {
+		pm_runtime_set_active(&pdev->dev);
+		pm_runtime_enable(&pdev->dev);
+	}
+	pm_runtime_idle(&pdev->dev);
+
 out:
 	return rc;
 
@@ -2568,9 +2590,17 @@ static void __devexit rtl8169_remove_one(struct pci_dev *pdev)
 	struct net_device *dev = pci_get_drvdata(pdev);
 	struct rtl8169_private *tp = netdev_priv(dev);
 
+	pm_runtime_get_sync(&pdev->dev);
+
 	flush_scheduled_work();
 
 	unregister_netdev(dev);
+
+	if (pci_dev_run_wake(pdev)) {
+		pm_runtime_disable(&pdev->dev);
+		pm_runtime_set_suspended(&pdev->dev);
+	}
+	pm_runtime_put_noidle(&pdev->dev);
 
 	/* restore original MAC address */
 	rtl_rar_set(tp, dev->perm_addr);
@@ -2598,6 +2628,7 @@ static int rtl8169_open(struct net_device *dev)
 	struct pci_dev *pdev = tp->pci_dev;
 	int retval = -ENOMEM;
 
+	pm_runtime_get_sync(&pdev->dev);
 
 	/*
 	 * Note that we use a magic value here, its wierd I know
@@ -2618,7 +2649,7 @@ static int rtl8169_open(struct net_device *dev)
 	tp->TxDescArray = pci_alloc_consistent(pdev, R8169_TX_RING_BYTES,
 					       &tp->TxPhyAddr);
 	if (!tp->TxDescArray)
-		goto out;
+		goto err_pm_runtime_put;
 
 	tp->RxDescArray = pci_alloc_consistent(pdev, R8169_RX_RING_BYTES,
 					       &tp->RxPhyAddr);
@@ -2645,6 +2676,9 @@ static int rtl8169_open(struct net_device *dev)
 
 	rtl8169_request_timer(dev);
 
+	tp->saved_wolopts = 0;
+	pm_runtime_put_noidle(&pdev->dev);
+
 	rtl8169_check_link_status(dev, tp, tp->mmio_addr);
 out:
 	return retval;
@@ -2654,9 +2688,13 @@ err_release_ring_2:
 err_free_rx_1:
 	pci_free_consistent(pdev, R8169_RX_RING_BYTES, tp->RxDescArray,
 			    tp->RxPhyAddr);
+	tp->RxDescArray = NULL;
 err_free_tx_0:
 	pci_free_consistent(pdev, R8169_TX_RING_BYTES, tp->TxDescArray,
 			    tp->TxPhyAddr);
+	tp->TxDescArray = NULL;
+err_pm_runtime_put:
+	pm_runtime_put_noidle(&pdev->dev);
 	goto out;
 }
 
@@ -4065,6 +4103,8 @@ static int rtl8169_close(struct net_device *dev)
 	struct rtl8169_private *tp = netdev_priv(dev);
 	struct pci_dev *pdev = tp->pci_dev;
 
+	pm_runtime_get_sync(&pdev->dev);
+
 	/* update counters before going down */
 	rtl8169_update_counters(dev);
 
@@ -4078,6 +4118,8 @@ static int rtl8169_close(struct net_device *dev)
 			    tp->TxPhyAddr);
 	tp->TxDescArray = NULL;
 	tp->RxDescArray = NULL;
+
+	pm_runtime_put_sync(&pdev->dev);
 
 	return 0;
 }
@@ -4177,19 +4219,72 @@ static int rtl8169_suspend(struct device *device)
 	return 0;
 }
 
+static void __rtl8169_resume(struct net_device *dev)
+{
+	netif_device_attach(dev);
+	rtl8169_schedule_work(dev, rtl8169_reset_task);
+}
+
 static int rtl8169_resume(struct device *device)
 {
 	struct pci_dev *pdev = to_pci_dev(device);
 	struct net_device *dev = pci_get_drvdata(pdev);
 
-	if (!netif_running(dev))
-		goto out;
+	if (netif_running(dev))
+		__rtl8169_resume(dev);
 
-	netif_device_attach(dev);
-
-	rtl8169_schedule_work(dev, rtl8169_reset_task);
-out:
 	return 0;
+}
+
+static int rtl8169_runtime_suspend(struct device *device)
+{
+	struct pci_dev *pdev = to_pci_dev(device);
+	struct net_device *dev = pci_get_drvdata(pdev);
+	struct rtl8169_private *tp = netdev_priv(dev);
+
+	if (!tp->TxDescArray)
+		return 0;
+
+	spin_lock_irq(&tp->lock);
+	tp->saved_wolopts = __rtl8169_get_wol(tp);
+	__rtl8169_set_wol(tp, WAKE_ANY);
+	spin_unlock_irq(&tp->lock);
+
+	rtl8169_net_suspend(dev);
+
+	return 0;
+}
+
+static int rtl8169_runtime_resume(struct device *device)
+{
+	struct pci_dev *pdev = to_pci_dev(device);
+	struct net_device *dev = pci_get_drvdata(pdev);
+	struct rtl8169_private *tp = netdev_priv(dev);
+
+	if (!tp->TxDescArray)
+		return 0;
+
+	spin_lock_irq(&tp->lock);
+	__rtl8169_set_wol(tp, tp->saved_wolopts);
+	tp->saved_wolopts = 0;
+	spin_unlock_irq(&tp->lock);
+
+	__rtl8169_resume(dev);
+
+	return 0;
+}
+
+static int rtl8169_runtime_idle(struct device *device)
+{
+	struct pci_dev *pdev = to_pci_dev(device);
+	struct net_device *dev = pci_get_drvdata(pdev);
+	struct rtl8169_private *tp = netdev_priv(dev);
+
+	if (!tp->TxDescArray)
+		return 0;
+
+	rtl8169_check_link_status(dev, tp, tp->mmio_addr);
+	return -EBUSY;
 }
 
 static const struct dev_pm_ops rtl8169_pm_ops = {
@@ -4199,6 +4294,9 @@ static const struct dev_pm_ops rtl8169_pm_ops = {
 	.thaw = rtl8169_resume,
 	.poweroff = rtl8169_suspend,
 	.restore = rtl8169_resume,
+	.runtime_suspend = rtl8169_runtime_suspend,
+	.runtime_resume = rtl8169_runtime_resume,
+	.runtime_idle = rtl8169_runtime_idle,
 };
 
 #define RTL8169_PM_OPS	(&rtl8169_pm_ops)
