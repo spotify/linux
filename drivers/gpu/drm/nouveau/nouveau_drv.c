@@ -117,7 +117,9 @@ static struct pci_device_id pciidlist[] = {
 	{}
 };
 
-MODULE_DEVICE_TABLE(pci, pciidlist);
+/* no autoload until xserver-xorg-video-nouveau
+ * MODULE_DEVICE_TABLE(pci, pciidlist);
+ */
 
 static struct drm_driver driver;
 
