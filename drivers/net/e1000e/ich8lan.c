@@ -1632,7 +1632,7 @@ static s32 e1000_flash_cycle_init_ich8lan(struct e1000_hw *hw)
 	/* Check if the flash descriptor is valid */
 	if (hsfsts.hsf_status.fldesvalid == 0) {
 		e_dbg("Flash descriptor invalid.  "
-			 "SW Sequencing must be used.");
+			 "SW Sequencing must be used.\n");
 		return -E1000_ERR_NVM;
 	}
 
@@ -1681,7 +1681,7 @@ static s32 e1000_flash_cycle_init_ich8lan(struct e1000_hw *hw)
 			hsfsts.hsf_status.flcdone = 1;
 			ew16flash(ICH_FLASH_HSFSTS, hsfsts.regval);
 		} else {
-			e_dbg("Flash controller busy, cannot get access");
+			e_dbg("Flash controller busy, cannot get access\n");
 		}
 	}
 
@@ -1832,7 +1832,7 @@ static s32 e1000_read_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 				continue;
 			} else if (hsfsts.hsf_status.flcdone == 0) {
 				e_dbg("Timeout error - flash cycle "
-					 "did not complete.");
+					 "did not complete.\n");
 				break;
 			}
 		}
