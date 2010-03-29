@@ -2172,7 +2172,6 @@ void iwl_post_associate(struct iwl_priv *priv)
 {
 	struct ieee80211_conf *conf = NULL;
 	int ret = 0;
-	unsigned long flags;
 
 	if (priv->iw_mode == NL80211_IFTYPE_AP) {
 		IWL_ERR(priv, "%s Should not be called in AP mode\n", __func__);
@@ -2256,10 +2255,6 @@ void iwl_post_associate(struct iwl_priv *priv)
 
 	if (priv->iw_mode == NL80211_IFTYPE_ADHOC)
 		priv->assoc_station_added = 1;
-
-	spin_lock_irqsave(&priv->lock, flags);
-	iwl_activate_qos(priv, 0);
-	spin_unlock_irqrestore(&priv->lock, flags);
 
 	/* the chain noise calibration will enabled PM upon completion
 	 * If chain noise has already been run, then we need to enable
@@ -2384,7 +2379,6 @@ static int iwl_mac_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 void iwl_config_ap(struct iwl_priv *priv)
 {
 	int ret = 0;
-	unsigned long flags;
 
 	if (test_bit(STATUS_EXIT_PENDING, &priv->status))
 		return;
@@ -2432,9 +2426,6 @@ void iwl_config_ap(struct iwl_priv *priv)
 		/* restore RXON assoc */
 		priv->staging_rxon.filter_flags |= RXON_FILTER_ASSOC_MSK;
 		iwlcore_commit_rxon(priv);
-		spin_lock_irqsave(&priv->lock, flags);
-		iwl_activate_qos(priv, 1);
-		spin_unlock_irqrestore(&priv->lock, flags);
 		iwl_rxon_add_station(priv, iwl_bcast_addr, 0);
 	}
 	iwl_send_beacon_cmd(priv);

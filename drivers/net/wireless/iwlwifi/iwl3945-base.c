@@ -3091,8 +3091,6 @@ void iwl3945_post_associate(struct iwl_priv *priv)
 		break;
 	}
 
-	iwl_activate_qos(priv, 0);
-
 	/* we have just associated, don't start scan too early */
 	priv->next_scan_jiffies = jiffies + IWL_DELAY_NEXT_SCAN;
 }
@@ -3804,11 +3802,6 @@ static int iwl3945_init_drv(struct iwl_priv *priv)
 	priv->band = IEEE80211_BAND_2GHZ;
 
 	priv->iw_mode = NL80211_IFTYPE_STATION;
-
-	iwl_reset_qos(priv);
-
-	priv->qos_data.qos_active = 0;
-	priv->qos_data.qos_cap.val = 0;
 
 	priv->rates_mask = IWL_RATES_MASK;
 	priv->tx_power_user_lmt = IWL_DEFAULT_TX_POWER;
