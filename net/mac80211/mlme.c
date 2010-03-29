@@ -786,6 +786,9 @@ static void ieee80211_sta_wmm_params(struct ieee80211_local *local,
 	int count;
 	u8 *pos;
 
+	if (!local->ops->conf_tx)
+		return;
+
 	if (!(ifmgd->flags & IEEE80211_STA_WMM_ENABLED))
 		return;
 
@@ -844,11 +847,15 @@ static void ieee80211_sta_wmm_params(struct ieee80211_local *local,
 		       wiphy_name(local->hw.wiphy), queue, aci, acm,
 		       params.aifs, params.cw_min, params.cw_max, params.txop);
 #endif
-		if (drv_conf_tx(local, queue, &params) && local->ops->conf_tx)
+		if (drv_conf_tx(local, queue, &params))
 			printk(KERN_DEBUG "%s: failed to set TX queue "
 			       "parameters for queue %d\n",
 			       wiphy_name(local->hw.wiphy), queue);
 	}
+
+	/* enable WMM or activate new settings */
+	local->hw.conf.flags |=	IEEE80211_CONF_QOS;
+	drv_config(local, IEEE80211_CONF_CHANGE_QOS);
 }
 
 static u32 ieee80211_handle_bss_capability(struct ieee80211_sub_if_data *sdata,
