@@ -182,6 +182,10 @@ const struct ssb_sprom *ssb_get_fallback_sprom(void)
 
 bool ssb_is_sprom_available(struct ssb_bus *bus)
 {
+	/* some older devices don't have chipcommon, but they have sprom */
+	if (!bus->chipco.dev)
+		return true;
+
 	/* status register only exists on chipcomon rev >= 11 */
 	if (bus->chipco.dev->id.revision < 11)
 		return true;
