@@ -229,6 +229,7 @@ config SND_CS4281
 
 config SND_CS46XX
 	tristate "Cirrus Logic (Sound Fusion) CS4280/CS461x/CS462x/CS463x"
+	depends on BROKEN
 	select SND_RAWMIDI
 	select SND_AC97_CODEC
 	help
