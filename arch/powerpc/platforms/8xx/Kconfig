@@ -160,16 +160,19 @@ config NO_UCODE_PATCH
 
 config USB_SOF_UCODE_PATCH
 	bool "USB SOF patch"
+	depends on BROKEN
 	help
 	  Help not implemented yet, coming soon.
 
 config I2C_SPI_UCODE_PATCH
 	bool "I2C/SPI relocation patch"
+	depends on BROKEN
 	help
 	  Help not implemented yet, coming soon.
 
 config I2C_SPI_SMC1_UCODE_PATCH
 	bool "I2C/SPI/SMC1 relocation patch"
+	depends on BROKEN
 	help
 	  Help not implemented yet, coming soon.
 
