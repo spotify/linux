@@ -1,5 +1,6 @@
 config RT2860
 	tristate "Ralink 2860 wireless support"
+	depends on BROKEN
 	depends on PCI && X86 && WLAN
 	---help---
 	  This is an experimental driver for the Ralink 2860 wireless chip.
