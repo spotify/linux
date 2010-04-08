@@ -159,8 +159,15 @@ static struct radeon_hpd radeon_atom_get_hpd_info_from_gpio(struct radeon_device
 							    struct radeon_gpio_rec *gpio)
 {
 	struct radeon_hpd hpd;
+	u32 reg;
+
+	if (ASIC_IS_DCE4(rdev))
+		reg = EVERGREEN_DC_GPIO_HPD_A;
+	else
+		reg = AVIVO_DC_GPIO_HPD_A;
+
 	hpd.gpio = *gpio;
-	if (gpio->reg == AVIVO_DC_GPIO_HPD_A) {
+	if (gpio->reg == reg) {
 		switch(gpio->mask) {
 		case (1 << 0):
 			hpd.hpd = RADEON_HPD_1;
@@ -574,6 +581,9 @@ bool radeon_get_atom_connector_info_from_object_table(struct drm_device *dev)
 				ddc_bus.valid = false;
 			}
 
+			/* needed for aux chan transactions */
+			ddc_bus.hpd_id = hpd.hpd ? (hpd.hpd - 1) : 0;
+
 			conn_id = le16_to_cpu(path->usConnObjectId);
 
 			if (!radeon_atom_apply_quirks
@@ -838,6 +848,7 @@ union firmware_info {
 	ATOM_FIRMWARE_INFO_V1_2 info_12;
 	ATOM_FIRMWARE_INFO_V1_3 info_13;
 	ATOM_FIRMWARE_INFO_V1_4 info_14;
+	ATOM_FIRMWARE_INFO_V2_1 info_21;
 };
 
 bool radeon_atom_get_clock_info(struct drm_device *dev)
@@ -849,6 +860,7 @@ bool radeon_atom_get_clock_info(struct drm_device *dev)
 	uint8_t frev, crev;
 	struct radeon_pll *p1pll = &rdev->clock.p1pll;
 	struct radeon_pll *p2pll = &rdev->clock.p2pll;
+	struct radeon_pll *dcpll = &rdev->clock.dcpll;
 	struct radeon_pll *spll = &rdev->clock.spll;
 	struct radeon_pll *mpll = &rdev->clock.mpll;
 	uint16_t data_offset;
@@ -951,8 +963,19 @@ bool radeon_atom_get_clock_info(struct drm_device *dev)
 		rdev->clock.default_mclk =
 		    le32_to_cpu(firmware_info->info.ulDefaultMemoryClock);
 
+		if (ASIC_IS_DCE4(rdev)) {
+			rdev->clock.default_dispclk =
+				le32_to_cpu(firmware_info->info_21.ulDefaultDispEngineClkFreq);
+			if (rdev->clock.default_dispclk == 0)
+				rdev->clock.default_dispclk = 60000; /* 600 Mhz */
+			rdev->clock.dp_extclk =
+				le16_to_cpu(firmware_info->info_21.usUniphyDPModeExtClkFreq);
+		}
+		*dcpll = *p1pll;
+
 		return true;
 	}
+
 	return false;
 }
 
@@ -1389,16 +1412,6 @@ void radeon_atom_set_clock_gating(struct radeon_device *rdev, int enable)
 {
 	DYNAMIC_CLOCK_GATING_PS_ALLOCATION args;
 	int index = GetIndexIntoMasterTable(COMMAND, DynamicClockGating);
-
-	args.ucEnable = enable;
-
-	atom_execute_table(rdev->mode_info.atom_context, index, (uint32_t *)&args);
-}
-
-void radeon_atom_static_pwrmgt_setup(struct radeon_device *rdev, int enable)
-{
-	ENABLE_ASIC_STATIC_PWR_MGT_PS_ALLOCATION args;
-	int index = GetIndexIntoMasterTable(COMMAND, EnableASIC_StaticPwrMgt);
 
 	args.ucEnable = enable;
 
