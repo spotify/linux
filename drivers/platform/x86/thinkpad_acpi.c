@@ -493,6 +493,7 @@ TPACPI_HANDLE(ec, root, "\\_SB.PCI0.ISA.EC0",	/* 240, 240x */
 	   "\\_SB.PCI0.ISA.EC",	/* A21e, A2xm/p, T20-22, X20-21 */
 	   "\\_SB.PCI0.AD4S.EC0",	/* i1400, R30 */
 	   "\\_SB.PCI0.ICH3.EC0",	/* R31 */
+	   "\\_SB.PCI0.LPC0.EC",	/* X100e */
 	   "\\_SB.PCI0.LPC.EC",	/* all others */
 	   );
 
