@@ -3135,6 +3135,7 @@ void e1000e_reset(struct e1000_adapter *adapter)
 			fc->high_water = 0x5000;
 			fc->low_water  = 0x3000;
 		}
+		fc->refresh_time = 0x1000;
 	} else {
 		if ((adapter->flags & FLAG_HAS_ERT) &&
 		    (adapter->netdev->mtu > ETH_DATA_LEN))
@@ -3171,10 +3172,6 @@ void e1000e_reset(struct e1000_adapter *adapter)
 
 	if (mac->ops.init_hw(hw))
 		e_err("Hardware Error\n");
-
-	/* additional part of the flow-control workaround above */
-	if (hw->mac.type == e1000_pchlan)
-		ew32(FCRTV_PCH, 0x1000);
 
 	e1000_update_mng_vlan(adapter);
 
