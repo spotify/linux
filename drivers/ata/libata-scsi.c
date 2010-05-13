@@ -415,6 +415,48 @@ int ata_std_bios_param(struct scsi_device *sdev, struct block_device *bdev,
 }
 
 /**
+ *	ata_scsi_set_capacity - adjust device capacity
+ *	@sdev: SCSI device to adjust device capacity for
+ *	@new_capacity: new target capacity
+ *
+ *	This function is called if a partition on @sdev extends beyond
+ *	the end of the device.  It requests EH to unlock HPA and
+ *	returns the possibly adjusted capacity.
+ *
+ *	LOCKING:
+ *	Defined by the SCSI layer.  Might sleep.
+ *
+ *	RETURNS:
+ *	New capacity if adjusted successfully.  0 if device is not
+ *	found.
+ */
+sector_t ata_scsi_set_capacity(struct scsi_device *sdev, sector_t new_capacity)
+{
+	struct ata_port *ap = ata_shost_to_port(sdev->host);
+	sector_t capacity = 0;
+	struct ata_device *dev;
+	unsigned long flags;
+
+	spin_lock_irqsave(ap->lock, flags);
+
+	dev = ata_scsi_find_dev(ap, sdev);
+	if (dev && dev->n_sectors < new_capacity &&
+	    dev->n_sectors < dev->n_native_sectors) {
+		struct ata_eh_info *ehi = &dev->link->eh_info;
+
+		dev->flags |= ATA_DFLAG_UNLOCK_HPA;
+		ehi->action |= ATA_EH_RESET;
+		ata_port_schedule_eh(ap);
+		spin_unlock_irqrestore(ap->lock, flags);
+		ata_port_wait_eh(ap);
+		capacity = dev->n_sectors;
+	} else
+		spin_unlock_irqrestore(ap->lock, flags);
+
+	return capacity;
+}
+
+/**
  *	ata_get_identity - Handler for HDIO_GET_IDENTITY ioctl
  *	@ap: target port
  *	@sdev: SCSI device to get identify data for
