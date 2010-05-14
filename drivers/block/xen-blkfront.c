@@ -46,6 +46,7 @@
 #include <xen/grant_table.h>
 #include <xen/events.h>
 #include <xen/page.h>
+#include <xen/platform_pci.h>
 
 #include <xen/interface/grant_table.h>
 #include <xen/interface/io/blkif.h>
@@ -736,6 +737,22 @@ static int blkfront_probe(struct xenbus_device *dev,
 		}
 	}
 
+	/* no unplug has been done: do not hook devices != xen vbds */
+	if (xen_hvm_domain() && (xen_platform_pci_unplug & XEN_UNPLUG_IGNORE)) {
+		int major;
+
+		if (!VDEV_IS_EXTENDED(vdevice))
+			major = BLKIF_MAJOR(vdevice);
+		else
+			major = XENVBD_MAJOR;
+
+		if (major != XENVBD_MAJOR) {
+			printk(KERN_INFO
+					"%s: HVM does not support vbd %d as xen block device\n",
+					__FUNCTION__, vdevice);
+			return -ENODEV;
+		}
+	}
 	info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info) {
 		xenbus_dev_fatal(dev, -ENOMEM, "allocating info structure");
