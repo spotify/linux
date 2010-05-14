@@ -1048,7 +1048,6 @@ msi_only:
 out:
 	/* Notify the stack of the (possibly) reduced Tx Queue count. */
 	adapter->netdev->real_num_tx_queues = adapter->num_tx_queues;
-	return;
 }
 
 /**
@@ -3702,8 +3701,6 @@ set_itr_now:
 		q_vector->itr_val = new_itr;
 		q_vector->set_itr = 1;
 	}
-
-	return;
 }
 
 #define IGB_TX_FLAGS_CSUM		0x00000001
