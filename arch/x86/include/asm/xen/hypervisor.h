@@ -45,8 +45,10 @@ enum xen_domain_type {
 
 #ifdef CONFIG_XEN
 extern enum xen_domain_type xen_domain_type;
+extern void __init xen_hvm_guest_init(void);
 #else
 #define xen_domain_type		XEN_NATIVE
+#define xen_hvm_guest_init() do { } while (0)
 #endif
 
 #define xen_domain()		(xen_domain_type != XEN_NATIVE)
