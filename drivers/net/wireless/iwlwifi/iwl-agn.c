@@ -438,7 +438,7 @@ void iwl_hw_txq_free_tfd(struct iwl_priv *priv, struct iwl_tx_queue *txq)
 	/* Sanity check on number of chunks */
 	num_tbs = iwl_tfd_get_num_tbs(tfd);
 
-	if (num_tbs >= IWL_NUM_OF_TBS) {
+	if (num_tbs > 2) {
 		IWL_ERR(priv, "Too many chunks: %i\n", num_tbs);
 		/* @todo issue fatal error, it is quite serious situation */
 		return;
@@ -481,10 +481,8 @@ int iwl_hw_txq_attach_buf_to_tfd(struct iwl_priv *priv,
 
 	num_tbs = iwl_tfd_get_num_tbs(tfd);
 
-	/* Each TFD can point to a maximum 20 Tx buffers */
-	if (num_tbs >= IWL_NUM_OF_TBS) {
-		IWL_ERR(priv, "Error can not send more than %d chunks\n",
-			  IWL_NUM_OF_TBS);
+	if (num_tbs >= 2) {
+		IWL_ERR(priv, "Error can not send more than 2 chunks\n");
 		return -EINVAL;
 	}
 

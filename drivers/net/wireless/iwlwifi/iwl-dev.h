@@ -197,7 +197,7 @@ struct iwl_queue {
 
 /* One for each TFD */
 struct iwl_tx_info {
-	struct sk_buff *skb[IWL_NUM_OF_TBS - 1];
+	struct sk_buff *skb[1];
 };
 
 /**
