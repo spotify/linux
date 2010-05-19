@@ -129,5 +129,7 @@ source "drivers/staging/ramzswap/Kconfig"
 
 source "drivers/staging/speakup/Kconfig"
 
+source "drivers/staging/xgifb/Kconfig"
+
 endif # !STAGING_EXCLUDE_BUILD
 endif # STAGING

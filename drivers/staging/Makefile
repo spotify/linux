@@ -45,3 +45,4 @@ obj-$(CONFIG_DX_SEP)		+= sep/
 obj-$(CONFIG_IIO)		+= iio/
 obj-$(CONFIG_RAMZSWAP)		+= ramzswap/
 obj-$(CONFIG_SPEAKUP)		+= speakup/
+obj-$(CONFIG_FB_XGI)		+= xgifb/
