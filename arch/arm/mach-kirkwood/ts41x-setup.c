@@ -21,6 +21,7 @@
 #include <linux/i2c.h>
 #include <linux/mv643xx_eth.h>
 #include <linux/ata_platform.h>
+#include <linux/gpio.h>
 #include <linux/gpio_keys.h>
 #include <linux/input.h>
 #include <linux/timex.h>
@@ -31,6 +32,8 @@
 #include <mach/kirkwood.h>
 #include "common.h"
 #include "mpp.h"
+
+#define QNAP_TS41X_JUMPER_JP1  45
 
 /****************************************************************************
  * 16 MiB NOR flash. The struct mtd_partition is not in the same order as the
@@ -230,6 +233,8 @@ static void __init qnap_ts41x_init(void)
 
 	pm_power_off = qnap_ts41x_power_off;
 
+	if (gpio_request(QNAP_TS41X_JUMPER_JP1, "JP1") == 0)
+		gpio_export(QNAP_TS41X_JUMPER_JP1, 0);
 }
 
 static int __init ts41x_pci_init(void)
