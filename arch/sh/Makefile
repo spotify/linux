@@ -75,7 +75,6 @@ OBJCOPYFLAGS	:= -O binary -R .note -R .note.gnu.build-id -R .comment \
 
 # Give the various platforms the opportunity to set default image types
 defaultimage-$(CONFIG_SUPERH32)			:= zImage
-defaultimage-$(CONFIG_SH_SH7785LCR)		:= uImage
 defaultimage-$(CONFIG_SH_RSK)			:= uImage
 defaultimage-$(CONFIG_SH_URQUELL)		:= uImage
 defaultimage-$(CONFIG_SH_7206_SOLUTION_ENGINE)	:= vmlinux
