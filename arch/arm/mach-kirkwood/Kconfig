@@ -44,6 +44,12 @@ config MACH_OPENRD_BASE
 	  Say 'Y' here if you want your kernel to support the
 	  Marvell OpenRD Base Board.
 
+config MACH_OPENRD_CLIENT
+	bool "Marvell OpenRD Client Board"
+	help
+	  Say 'Y' here if you want your kernel to support the
+	  Marvell OpenRD Client Board.
+
 endmenu
 
 endif
