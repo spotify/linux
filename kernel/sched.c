@@ -1812,8 +1812,9 @@ static void cfs_rq_set_shares(struct cfs_rq *cfs_rq, unsigned long shares)
 }
 #endif
 
-static void calc_load_account_active(struct rq *this_rq);
 static void update_sysctl(void);
+
+static void calc_load_account_active(struct rq *this_rq);
 
 #include "sched_stats.h"
 #include "sched_idletask.c"
