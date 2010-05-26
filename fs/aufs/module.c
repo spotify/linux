@@ -81,6 +81,7 @@ MODULE_AUTHOR("Junjiro R. Okajima <aufs-users@lists.sourceforge.net>");
 MODULE_DESCRIPTION(AUFS_NAME
 	" -- Advanced multi layered unification filesystem");
 MODULE_VERSION(AUFS_VERSION);
+MODULE_INFO(staging, "Y");
 
 /* it should be 'byte', but param_set_byte() prints it by "%c" */
 short aufs_nwkq = AUFS_NWKQ_DEF;
