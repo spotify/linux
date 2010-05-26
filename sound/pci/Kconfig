@@ -229,7 +229,7 @@ config SND_CS4281
 
 config SND_CS46XX
 	tristate "Cirrus Logic (Sound Fusion) CS4280/CS461x/CS462x/CS463x"
-	depends on BROKEN
+	select FW_LOADER
 	select SND_RAWMIDI
 	select SND_AC97_CODEC
 	help
@@ -241,6 +241,7 @@ config SND_CS46XX
 
 config SND_CS46XX_NEW_DSP
 	bool "Cirrus Logic (Sound Fusion) New DSP support"
+	depends on BROKEN
 	depends on SND_CS46XX
 	default y
 	help

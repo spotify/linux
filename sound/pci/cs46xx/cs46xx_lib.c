@@ -53,6 +53,7 @@
 #include <linux/slab.h>
 #include <linux/gameport.h>
 #include <linux/mutex.h>
+#include <linux/firmware.h>
 
 
 #include <sound/core.h>
@@ -308,7 +309,7 @@ static void snd_cs46xx_ac97_write(struct snd_ac97 *ac97,
  */
 
 int snd_cs46xx_download(struct snd_cs46xx *chip,
-			u32 *src,
+			const __le32 *src,
                         unsigned long offset,
                         unsigned long len)
 {
@@ -321,9 +322,9 @@ int snd_cs46xx_download(struct snd_cs46xx *chip,
 	dst = chip->region.idx[bank+1].remap_addr + offset;
 	len /= sizeof(u32);
 
-	/* writel already converts 32-bit value to right endianess */
 	while (len-- > 0) {
-		writel(*src++, dst);
+		__raw_writel((__force u32)*src++, dst);
+		mmiowb();
 		dst += sizeof(u32);
 	}
 	return 0;
@@ -360,22 +361,76 @@ int snd_cs46xx_clear_BA1(struct snd_cs46xx *chip,
 
 #else /* old DSP image */
 
-#include "cs46xx_image.h"
+struct cs46xx_old_image {
+	__le32 size[BA1_MEMORY_COUNT];
+	__le32 data[0];
+};
 
-int snd_cs46xx_download_image(struct snd_cs46xx *chip)
+static int snd_cs46xx_check_image_size(const struct firmware *firmware)
 {
-	int idx, err;
-	unsigned long offset = 0;
+	const struct cs46xx_old_image *image =
+		(const struct cs46xx_old_image *)firmware->data;
+	size_t offset = sizeof(*image);
+	int idx;
+
+	if (firmware->size < offset) {
+		snd_printk(KERN_ERR "cs46xx: firmware too small\n");
+		return -EINVAL;
+	}
 
 	for (idx = 0; idx < BA1_MEMORY_COUNT; idx++) {
-		if ((err = snd_cs46xx_download(chip,
-					       &BA1Struct.map[offset],
-					       BA1Struct.memory[idx].offset,
-					       BA1Struct.memory[idx].size)) < 0)
-			return err;
-		offset += BA1Struct.memory[idx].size >> 2;
-	}	
+		size_t size = le32_to_cpu(image->size[idx]);
+
+		if (size % sizeof(u32)) {
+			snd_printk(KERN_ERR "cs46xx: firmware hunk misaligned\n");
+			return -EINVAL;
+		}
+		if (size > BA1_DWORD_SIZE * sizeof(u32)) {
+			snd_printk(KERN_ERR "cs46xx: firmware hunk out of range\n");
+			return -EINVAL;
+		}
+		offset += size;
+	}
+
+	if (firmware->size != offset) {
+		snd_printk(KERN_ERR "cs46xx: firmware size mismatch\n");
+		return -EINVAL;
+	}
+
 	return 0;
+}
+
+static int snd_cs46xx_download_image(struct snd_cs46xx *chip)
+{
+	int idx, err;
+	const struct firmware *firmware = NULL;
+	const struct cs46xx_old_image *image;
+	const __le32 *data;
+
+	err = request_firmware(&firmware, "cs46xx/cs46xx-old.fw",
+			       &chip->pci->dev);
+	if (err < 0) {
+		snd_printk(KERN_ERR "cs46xx: no firmware\n");
+		return err;
+	}
+
+	err = snd_cs46xx_check_image_size(firmware);
+	if (err < 0)
+		goto end;
+	image = (const struct cs46xx_old_image *)firmware->data;
+	data = image->data;
+
+	for (idx = 0; idx < BA1_MEMORY_COUNT; idx++) {
+		size_t size = le32_to_cpu(image->size[idx]);
+
+		err = snd_cs46xx_download(chip, data, idx << 16, size);
+		if (err < 0)
+			goto end;
+		data += size / sizeof(u32);
+	}
+end:
+	release_firmware(firmware);
+	return err;
 }
 #endif /* CONFIG_SND_CS46XX_NEW_DSP */
 
@@ -3874,3 +3929,5 @@ int __devinit snd_cs46xx_create(struct snd_card *card,
 	*rchip = chip;
 	return 0;
 }
+
+MODULE_FIRMWARE("cs46xx/cs46xx-old.fw");
