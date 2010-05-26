@@ -121,6 +121,15 @@ MODULE_PARM_DESC(ql2xfwloadbin,
 		" 1 -- load firmware from flash.\n"
 		" 0 -- use default semantics.\n");
 
+int ql2xenablemsix = 1;
+module_param(ql2xenablemsix, int, S_IRUGO|S_IRUSR);
+MODULE_PARM_DESC(ql2xenablemsix,
+                "Set to enable MSI or MSI-X interrupt mechanism."
+                " Default is 1, enable MSI-X interrupt mechanism."
+                " 0 = enable traditional pin-based mechanism."
+                " 1 = enable MSI-X interrupt mechanism."
+                " 2 = enable MSI interrupt mechanism.");
+
 /*
  * SCSI host template entry points
  */
