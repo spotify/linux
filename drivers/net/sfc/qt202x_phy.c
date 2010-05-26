@@ -1,14 +1,13 @@
 /****************************************************************************
  * Driver for Solarflare Solarstorm network controllers and boards
- * Copyright 2006-2008 Solarflare Communications Inc.
+ * Copyright 2006-2009 Solarflare Communications Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
  * by the Free Software Foundation, incorporated herein by reference.
  */
 /*
- * Driver for SFP+ and XFP optical PHYs plus some support specific to the
- * AMCC QT20xx adapters; see www.amcc.com for details
+ * Driver for AMCC QT202x SFP+ and XFP adapters; see www.amcc.com for details
  */
 
 #include <linux/timer.h>
@@ -16,15 +15,15 @@
 #include "efx.h"
 #include "mdio_10g.h"
 #include "phy.h"
-#include "falcon.h"
+#include "nic.h"
 
-#define XFP_REQUIRED_DEVS (MDIO_DEVS_PCS |	\
-			   MDIO_DEVS_PMAPMD |	\
-			   MDIO_DEVS_PHYXS)
+#define QT202X_REQUIRED_DEVS (MDIO_DEVS_PCS |		\
+			      MDIO_DEVS_PMAPMD |	\
+			      MDIO_DEVS_PHYXS)
 
-#define XFP_LOOPBACKS ((1 << LOOPBACK_PCS) |		\
-		       (1 << LOOPBACK_PMAPMD) |		\
-		       (1 << LOOPBACK_NETWORK))
+#define QT202X_LOOPBACKS ((1 << LOOPBACK_PCS) |		\
+			  (1 << LOOPBACK_PMAPMD) |	\
+			  (1 << LOOPBACK_PHYXS_WS))
 
 /****************************************************************************/
 /* Quake-specific MDIO registers */
@@ -45,18 +44,18 @@
 #define PCS_VEND1_REG	   	0xc000
 #define PCS_VEND1_LBTXD_LBN	5
 
-void xfp_set_led(struct efx_nic *p, int led, int mode)
+void falcon_qt202x_set_led(struct efx_nic *p, int led, int mode)
 {
 	int addr = MDIO_QUAKE_LED0_REG + led;
 	efx_mdio_write(p, MDIO_MMD_PMAPMD, addr, mode);
 }
 
-struct xfp_phy_data {
+struct qt202x_phy_data {
 	enum efx_phy_mode phy_mode;
 };
 
-#define XFP_MAX_RESET_TIME 500
-#define XFP_RESET_WAIT 10
+#define QT2022C2_MAX_RESET_TIME 500
+#define QT2022C2_RESET_WAIT 10
 
 static int qt2025c_wait_reset(struct efx_nic *efx)
 {
@@ -97,7 +96,7 @@ static int qt2025c_wait_reset(struct efx_nic *efx)
 	return 0;
 }
 
-static int xfp_reset_phy(struct efx_nic *efx)
+static int qt202x_reset_phy(struct efx_nic *efx)
 {
 	int rc;
 
@@ -111,8 +110,9 @@ static int xfp_reset_phy(struct efx_nic *efx)
 		/* Reset the PHYXS MMD. This is documented as doing
 		 * a complete soft reset. */
 		rc = efx_mdio_reset_mmd(efx, MDIO_MMD_PHYXS,
-					XFP_MAX_RESET_TIME / XFP_RESET_WAIT,
-					XFP_RESET_WAIT);
+					QT2022C2_MAX_RESET_TIME /
+					QT2022C2_RESET_WAIT,
+					QT2022C2_RESET_WAIT);
 		if (rc < 0)
 			goto fail;
 	}
@@ -122,11 +122,11 @@ static int xfp_reset_phy(struct efx_nic *efx)
 
 	/* Check that all the MMDs we expect are present and responding. We
 	 * expect faults on some if the link is down, but not on the PHY XS */
-	rc = efx_mdio_check_mmds(efx, XFP_REQUIRED_DEVS, MDIO_DEVS_PHYXS);
+	rc = efx_mdio_check_mmds(efx, QT202X_REQUIRED_DEVS, MDIO_DEVS_PHYXS);
 	if (rc < 0)
 		goto fail;
 
-	efx->board_info.init_leds(efx);
+	falcon_board(efx)->type->init_phy(efx);
 
 	return rc;
 
@@ -135,60 +135,60 @@ static int xfp_reset_phy(struct efx_nic *efx)
 	return rc;
 }
 
-static int xfp_phy_init(struct efx_nic *efx)
+static int qt202x_phy_probe(struct efx_nic *efx)
 {
-	struct xfp_phy_data *phy_data;
-	u32 devid = efx_mdio_read_id(efx, MDIO_MMD_PHYXS);
+	efx->mdio.mmds = QT202X_REQUIRED_DEVS;
+	efx->mdio.mode_support = MDIO_SUPPORTS_C45 | MDIO_EMULATE_C22;
+	efx->loopback_modes = QT202X_LOOPBACKS | FALCON_XMAC_LOOPBACKS;
+	return 0;
+}
+
+static int qt202x_phy_init(struct efx_nic *efx)
+{
+	struct qt202x_phy_data *phy_data;
+	u32 devid;
 	int rc;
 
-	phy_data = kzalloc(sizeof(struct xfp_phy_data), GFP_KERNEL);
+	rc = qt202x_reset_phy(efx);
+	if (rc) {
+		EFX_ERR(efx, "PHY init failed\n");
+		return rc;
+	}
+
+	phy_data = kzalloc(sizeof(struct qt202x_phy_data), GFP_KERNEL);
 	if (!phy_data)
 		return -ENOMEM;
 	efx->phy_data = phy_data;
 
+	devid = efx_mdio_read_id(efx, MDIO_MMD_PHYXS);
 	EFX_INFO(efx, "PHY ID reg %x (OUI %06x model %02x revision %x)\n",
 		 devid, efx_mdio_id_oui(devid), efx_mdio_id_model(devid),
 		 efx_mdio_id_rev(devid));
 
 	phy_data->phy_mode = efx->phy_mode;
-
-	rc = xfp_reset_phy(efx);
-
-	EFX_INFO(efx, "PHY init %s.\n",
-		 rc ? "failed" : "successful");
-	if (rc < 0)
-		goto fail;
-
 	return 0;
-
- fail:
-	kfree(efx->phy_data);
-	efx->phy_data = NULL;
-	return rc;
 }
 
-static void xfp_phy_clear_interrupt(struct efx_nic *efx)
+static int qt202x_link_ok(struct efx_nic *efx)
 {
-	/* Read to clear link status alarm */
-	efx_mdio_read(efx, MDIO_MMD_PMAPMD, MDIO_PMA_LASI_STAT);
+	return efx_mdio_links_ok(efx, QT202X_REQUIRED_DEVS);
 }
 
-static int xfp_link_ok(struct efx_nic *efx)
+static bool qt202x_phy_poll(struct efx_nic *efx)
 {
-	return efx_mdio_links_ok(efx, XFP_REQUIRED_DEVS);
+	bool was_up = efx->link_state.up;
+
+	efx->link_state.up = qt202x_link_ok(efx);
+	efx->link_state.speed = 10000;
+	efx->link_state.fd = true;
+	efx->link_state.fc = efx->wanted_fc;
+
+	return efx->link_state.up != was_up;
 }
 
-static void xfp_phy_poll(struct efx_nic *efx)
+static int qt202x_phy_reconfigure(struct efx_nic *efx)
 {
-	int link_up = xfp_link_ok(efx);
-	/* Simulate a PHY event if link state has changed */
-	if (link_up != efx->link_up)
-		falcon_sim_phy_event(efx);
-}
-
-static void xfp_phy_reconfigure(struct efx_nic *efx)
-{
-	struct xfp_phy_data *phy_data = efx->phy_data;
+	struct qt202x_phy_data *phy_data = efx->phy_data;
 
 	if (efx->phy_type == PHY_TYPE_QT2025C) {
 		/* There are several different register bits which can
@@ -207,7 +207,7 @@ static void xfp_phy_reconfigure(struct efx_nic *efx)
 		/* Reset the PHY when moving from tx off to tx on */
 		if (!(efx->phy_mode & PHY_MODE_TX_DISABLED) &&
 		    (phy_data->phy_mode & PHY_MODE_TX_DISABLED))
-			xfp_reset_phy(efx);
+			qt202x_reset_phy(efx);
 
 		efx_mdio_transmit_disable(efx);
 	}
@@ -215,36 +215,28 @@ static void xfp_phy_reconfigure(struct efx_nic *efx)
 	efx_mdio_phy_reconfigure(efx);
 
 	phy_data->phy_mode = efx->phy_mode;
-	efx->link_up = xfp_link_ok(efx);
-	efx->link_speed = 10000;
-	efx->link_fd = true;
-	efx->link_fc = efx->wanted_fc;
+
+	return 0;
 }
 
-static void xfp_phy_get_settings(struct efx_nic *efx, struct ethtool_cmd *ecmd)
+static void qt202x_phy_get_settings(struct efx_nic *efx, struct ethtool_cmd *ecmd)
 {
 	mdio45_ethtool_gset(&efx->mdio, ecmd);
 }
 
-static void xfp_phy_fini(struct efx_nic *efx)
+static void qt202x_phy_fini(struct efx_nic *efx)
 {
-	/* Clobber the LED if it was blinking */
-	efx->board_info.blink(efx, false);
-
 	/* Free the context block */
 	kfree(efx->phy_data);
 	efx->phy_data = NULL;
 }
 
-struct efx_phy_operations falcon_xfp_phy_ops = {
-	.macs		 = EFX_XMAC,
-	.init            = xfp_phy_init,
-	.reconfigure     = xfp_phy_reconfigure,
-	.poll            = xfp_phy_poll,
-	.fini            = xfp_phy_fini,
-	.clear_interrupt = xfp_phy_clear_interrupt,
-	.get_settings    = xfp_phy_get_settings,
+struct efx_phy_operations falcon_qt202x_phy_ops = {
+	.probe		 = qt202x_phy_probe,
+	.init		 = qt202x_phy_init,
+	.reconfigure	 = qt202x_phy_reconfigure,
+	.poll	     	 = qt202x_phy_poll,
+	.fini	  	 = qt202x_phy_fini,
+	.get_settings	 = qt202x_phy_get_settings,
 	.set_settings	 = efx_mdio_set_settings,
-	.mmds            = XFP_REQUIRED_DEVS,
-	.loopbacks       = XFP_LOOPBACKS,
 };
