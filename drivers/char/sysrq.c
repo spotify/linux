@@ -43,7 +43,7 @@
 #include <asm/irq_regs.h>
 
 /* Whether we react on sysrq keys or just ignore them */
-int __read_mostly __sysrq_enabled = 1;
+int __read_mostly __sysrq_enabled = CONFIG_MAGIC_SYSRQ_DEFAULT_MASK;
 
 static int __read_mostly sysrq_always_enabled;
 
