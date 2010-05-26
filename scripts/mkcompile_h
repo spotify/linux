@@ -64,19 +64,34 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
   echo \#define UTS_VERSION \"`echo $UTS_VERSION | $UTS_TRUNCATE`\"
 
   echo \#define LINUX_COMPILE_TIME \"`date +%T`\"
-  echo \#define LINUX_COMPILE_BY \"`whoami`\"
-  echo \#define LINUX_COMPILE_HOST \"`hostname | $UTS_TRUNCATE`\"
 
-  if [ -x /bin/dnsdomainname ]; then
-    domain=`dnsdomainname 2> /dev/null`
-  elif [ -x /bin/domainname ]; then
-    domain=`domainname 2> /dev/null`
-  fi
+  DISTRIBUTION=$(lsb_release -is 2>/dev/null)
+  DISTRIBUTION=${DISTRIBUTION:-Debian}
+  echo \#define LINUX_COMPILE_DISTRIBUTION \"$DISTRIBUTION\"
 
-  if [ -n "$domain" ]; then
-    echo \#define LINUX_COMPILE_DOMAIN \"`echo $domain | $UTS_TRUNCATE`\"
+  if [ "$DISTRIBUTION_OFFICIAL_BUILD" ]; then
+    echo \#define LINUX_COMPILE_DISTRIBUTION_OFFICIAL_BUILD
+    echo \#define LINUX_COMPILE_DISTRIBUTION_UPLOADER \"$DISTRIBUTION_UPLOADER\"
+    echo \#define LINUX_COMPILE_DISTRIBUTION_VERSION \"$DISTRIBUTION_VERSION\"
+    echo \#define LINUX_COMPILE_BY \"unknown\"
+    echo \#define LINUX_COMPILE_HOST \"$DISTRIBUTION\"
   else
-    echo \#define LINUX_COMPILE_DOMAIN
+    if [ -e version.$DISTRIBUTION ]; then
+      echo \#define LINUX_COMPILE_DISTRIBUTION_VERSION \"$(cut -d" " -f1 version.$DISTRIBUTION)\"
+    else
+      echo \#define LINUX_COMPILE_DISTRIBUTION_VERSION \"unknown\"
+    fi
+
+    echo \#define LINUX_COMPILE_BY \"`whoami`\"
+    echo \#define LINUX_COMPILE_HOST \"`hostname | $UTS_TRUNCATE`\"
+
+    if [ -x /bin/dnsdomainname ]; then
+      echo \#define LINUX_COMPILE_DOMAIN \"`dnsdomainname | $UTS_TRUNCATE`\"
+    elif [ -x /bin/domainname ]; then
+      echo \#define LINUX_COMPILE_DOMAIN \"`domainname | $UTS_TRUNCATE`\"
+    else
+      echo \#define LINUX_COMPILE_DOMAIN
+    fi
   fi
 
   echo \#define LINUX_COMPILER \"`$CC -v 2>&1 | tail -n 1`\"

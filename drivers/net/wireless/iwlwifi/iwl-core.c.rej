@@ -1,0 +1,14 @@
+--- drivers/net/wireless/iwlwifi/iwl-core.c
++++ drivers/net/wireless/iwlwifi/iwl-core.c
+@@ -1395,11 +1395,6 @@
+ 
+        iwl_init_scan_params(priv);
+ 
+-       iwl_reset_qos(priv);
+-
+-       priv->qos_data.qos_active = 0;
+-       priv->qos_data.qos_cap.val = 0;
+-
+        priv->rates_mask = IWL_RATES_MASK;
+        /* Set the tx_power_user_lmt to the lowest power level
+         * this value will get overwritten by channel max power avg
