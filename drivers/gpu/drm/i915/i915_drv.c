@@ -52,9 +52,7 @@ static struct pci_device_id pciidlist[] = {
 	i915_PCI_IDS
 };
 
-#if defined(CONFIG_DRM_I915_KMS)
 MODULE_DEVICE_TABLE(pci, pciidlist);
-#endif
 
 static int i915_suspend(struct drm_device *dev, pm_message_t state)
 {
