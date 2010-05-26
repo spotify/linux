@@ -288,11 +288,11 @@ static struct vm_area_struct *vma_to_resize(unsigned long addr,
 		lock_limit = current->signal->rlim[RLIMIT_MEMLOCK].rlim_cur;
 		locked += new_len - old_len;
 		if (locked > lock_limit && !capable(CAP_IPC_LOCK))
-			goto Eagain;
+			goto out;
 	}
-
-	if (!may_expand_vm(mm, (new_len - old_len) >> PAGE_SHIFT))
+	if (!may_expand_vm(mm, (new_len - old_len) >> PAGE_SHIFT)) {
 		goto Enomem;
+	}
 
 	if (vma->vm_flags & VM_ACCOUNT) {
 		unsigned long charged = (new_len - old_len) >> PAGE_SHIFT;
@@ -309,7 +309,7 @@ Einval:
 	return ERR_PTR(-EINVAL);
 Enomem:
 	return ERR_PTR(-ENOMEM);
-Eagain:
+out:
 	return ERR_PTR(-EAGAIN);
 }
 
