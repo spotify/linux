@@ -830,13 +830,16 @@ static int sis_init_one (struct pci_dev *pdev, const struct pci_device_id *ent)
 }
 
 static const struct pci_device_id sis_pci_tbl[] = {
+#ifdef CONFIG_PATA_SIS
 	{ PCI_VDEVICE(SI, 0x5513), },	/* SiS 5513 */
 	{ PCI_VDEVICE(SI, 0x5518), },	/* SiS 5518 */
 	{ PCI_VDEVICE(SI, 0x1180), },	/* SiS 1180 */
+#endif
 
 	{ }
 };
 
+#ifdef CONFIG_PATA_SIS
 static struct pci_driver sis_pci_driver = {
 	.name			= DRV_NAME,
 	.id_table		= sis_pci_tbl,
@@ -860,6 +863,7 @@ static void __exit sis_exit(void)
 
 module_init(sis_init);
 module_exit(sis_exit);
+#endif
 
 MODULE_AUTHOR("Alan Cox");
 MODULE_DESCRIPTION("SCSI low-level driver for SiS ATA");

@@ -182,7 +182,7 @@ config SATA_SIL
 config SATA_SIS
 	tristate "SiS 964/965/966/180 SATA support"
 	depends on PCI
-	select PATA_SIS
+	select PATA_SIS_STUB
 	help
 	  This option enables support for SiS Serial ATA on
 	  SiS 964/965/966/180 and Parallel ATA on SiS 180.
@@ -659,9 +659,13 @@ config PATA_SIL680
 
 	  If unsure, say N.
 
+config PATA_SIS_STUB
+	tristate
+
 config PATA_SIS
 	tristate "SiS PATA support"
 	depends on PCI
+	select PATA_SIS_STUB
 	help
 	  This option enables support for SiS PATA controllers
 
