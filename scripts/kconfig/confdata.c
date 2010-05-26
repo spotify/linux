@@ -790,6 +790,85 @@ int conf_write_autoconf(void)
 	return 0;
 }
 
+void conf_write_changes(void)
+{
+	struct symbol *sym;
+	struct menu *menu;
+	int l;
+	const char *str;
+
+	fprintf(stdout, "\n#\n"
+			"# Changes:\n"
+			"#\n");
+	menu = rootmenu.list;
+	while (menu) {
+		sym = menu->sym;
+		if (sym &&
+		    !(sym->flags & SYMBOL_CHOICE) &&
+		    sym->flags & SYMBOL_WRITE &&
+		    sym->flags & SYMBOL_NEW &&
+		    sym->visible != no &&
+		    sym_is_changable(sym)) {
+			switch (sym->type) {
+			case S_BOOLEAN:
+			case S_TRISTATE:
+				switch (sym_get_tristate_value(sym)) {
+				case no:
+					fprintf(stdout, "# CONFIG_%s is not set\n", sym->name);
+					break;
+				case mod:
+					fprintf(stdout, "CONFIG_%s=m\n", sym->name);
+					break;
+				case yes:
+					fprintf(stdout, "CONFIG_%s=y\n", sym->name);
+					break;
+				}
+				break;
+			case S_STRING:
+				str = sym_get_string_value(sym);
+				fprintf(stdout, "CONFIG_%s=\"", sym->name);
+				while (1) {
+					l = strcspn(str, "\"\\");
+					if (l) {
+						fwrite(str, l, 1, stdout);
+						str += l;
+					}
+					if (!*str)
+						break;
+					fprintf(stdout, "\\%c", *str++);
+				}
+				fputs("\"\n", stdout);
+				break;
+			case S_HEX:
+				str = sym_get_string_value(sym);
+				if (str[0] != '0' || (str[1] != 'x' && str[1] != 'X')) {
+					fprintf(stdout, "CONFIG_%s=%s\n", sym->name, str);
+					break;
+				}
+			case S_INT:
+				str = sym_get_string_value(sym);
+				fprintf(stdout, "CONFIG_%s=%s\n", sym->name, str);
+				break;
+                        default:
+                                break;
+			}
+		}
+
+		if (menu->list) {
+			menu = menu->list;
+			continue;
+		}
+		if (menu->next)
+			menu = menu->next;
+		else while ((menu = menu->parent)) {
+			if (menu->next) {
+				menu = menu->next;
+				break;
+			}
+		}
+	}
+}
+
 static int sym_change_count;
 static void (*conf_changed_callback)(void);
 
@@ -828,6 +907,7 @@ void conf_set_all_new_symbols(enum conf_def_mode mode)
 	for_all_symbols(i, sym) {
 		if (sym_has_value(sym))
 			continue;
+		sym->flags |= SYMBOL_NEW;
 		switch (sym_get_type(sym)) {
 		case S_BOOLEAN:
 		case S_TRISTATE:

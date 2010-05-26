@@ -3,7 +3,7 @@
 # These targets are used from top-level makefile
 
 PHONY += oldconfig xconfig gconfig menuconfig config silentoldconfig update-po-config \
-	localmodconfig localyesconfig
+	localmodconfig localyesconfig reportoldconfig updateoldconfig
 
 ifdef KBUILD_KCONFIG
 Kconfig := $(KBUILD_KCONFIG)
@@ -26,8 +26,14 @@ config: $(obj)/conf
 oldconfig: $(obj)/conf
 	$< -o $(Kconfig)
 
+reportoldconfig: $(obj)/conf
+	$< -R $(Kconfig)
+
 silentoldconfig: $(obj)/conf
 	$< -s $(Kconfig)
+
+updateoldconfig: $(obj)/conf
+	$< -U $(Kconfig)
 
 localmodconfig: $(obj)/streamline_config.pl $(obj)/conf
 	$(Q)perl $< $(srctree) $(Kconfig) > .tmp.config

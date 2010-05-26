@@ -5,6 +5,7 @@
 
 #include <locale.h>
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -434,12 +435,13 @@ int main(int ac, char **av)
 	int opt;
 	const char *name;
 	struct stat tmpstat;
+	bool report = false, update = false;
 
 	setlocale(LC_ALL, "");
 	bindtextdomain(PACKAGE, LOCALEDIR);
 	textdomain(PACKAGE);
 
-	while ((opt = getopt(ac, av, "osdD:nmyrh")) != -1) {
+	while ((opt = getopt(ac, av, "osdD:nmyrRUh")) != -1) {
 		switch (opt) {
 		case 'o':
 			input_mode = ask_silent;
@@ -481,6 +483,14 @@ int main(int ac, char **av)
 			input_mode = set_random;
 			break;
 		}
+		case 'R':
+			input_mode = set_default;
+			report = update = true;
+			break;
+		case 'U':
+			input_mode = set_default;
+			update = true;
+			break;
 		case 'h':
 			printf(_("See README for usage info\n"));
 			exit(0);
@@ -513,13 +523,17 @@ int main(int ac, char **av)
 
 	switch (input_mode) {
 	case set_default:
-		if (!defconfig_file)
-			defconfig_file = conf_get_default_confname();
-		if (conf_read(defconfig_file)) {
-			printf(_("***\n"
-				"*** Can't find default configuration \"%s\"!\n"
-				"***\n"), defconfig_file);
-			exit(1);
+		if (update)
+			conf_read(NULL);
+		else {
+			if (!defconfig_file)
+				defconfig_file = conf_get_default_confname();
+			if (conf_read(defconfig_file)) {
+				printf("***\n"
+					"*** Can't find default configuration \"%s\"!\n"
+					"***\n", defconfig_file);
+				exit(1);
+			}
 		}
 		break;
 	case ask_silent:
@@ -594,6 +608,9 @@ int main(int ac, char **av)
 		} while (conf_cnt);
 		break;
 	}
+
+	if (report)
+		conf_write_changes();
 
 	if (sync_kconfig) {
 		/* silentoldconfig is used during the build so we shall update autoconf.
