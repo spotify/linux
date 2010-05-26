@@ -160,9 +160,7 @@ static struct pci_device_id pciidlist[] = {
 	radeon_PCI_IDS
 };
 
-#if defined(CONFIG_DRM_RADEON_KMS)
 MODULE_DEVICE_TABLE(pci, pciidlist);
-#endif
 
 static struct drm_driver driver_old = {
 	.driver_features =
