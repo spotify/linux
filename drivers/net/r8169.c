@@ -1944,7 +1944,7 @@ static void rtl8102e_hw_phy_config(void __iomem *ioaddr)
 	rtl_phy_write(ioaddr, phy_reg_init, ARRAY_SIZE(phy_reg_init));
 }
 
-static int rtl_hw_phy_config(struct net_device *dev)
+static void rtl_hw_phy_config(struct net_device *dev)
 {
 	struct rtl8169_private *tp = netdev_priv(dev);
 	void __iomem *ioaddr = tp->mmio_addr;
@@ -2013,8 +2013,6 @@ static int rtl_hw_phy_config(struct net_device *dev)
 	default:
 		break;
 	}
-
-	return 0;
 }
 
 static void rtl8169_phy_timer(unsigned long __opaque)
@@ -2119,14 +2117,11 @@ static void rtl8169_phy_reset(struct net_device *dev,
 		printk(KERN_ERR "%s: PHY reset failed.\n", dev->name);
 }
 
-static int rtl8169_init_phy(struct net_device *dev, struct rtl8169_private *tp)
+static void rtl8169_init_phy(struct net_device *dev, struct rtl8169_private *tp)
 {
 	void __iomem *ioaddr = tp->mmio_addr;
-	int rc;
 
-	rc = rtl_hw_phy_config(dev);
-	if (rc)
-		return rc;
+	rtl_hw_phy_config(dev);
 
 	if (tp->mac_version <= RTL_GIGA_MAC_VER_06) {
 		dprintk("Set MAC Reg C+CR Offset 0x82h = 0x01h\n");
@@ -2155,8 +2150,6 @@ static int rtl8169_init_phy(struct net_device *dev, struct rtl8169_private *tp)
 
 	if ((RTL_R8(PHYstatus) & TBI_Enable) && netif_msg_link(tp))
 		printk(KERN_INFO PFX "%s: TBI auto-negotiating\n", dev->name);
-
-	return 0;
 }
 
 static void rtl_rar_set(struct rtl8169_private *tp, u8 *addr)
@@ -2543,9 +2536,7 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 		       dev->dev_addr[4], dev->dev_addr[5], xid, dev->irq);
 	}
 
-	rc = rtl8169_init_phy(dev, tp);
-	if (rc)
-		goto err_out_msi_5;
+	rtl8169_init_phy(dev, tp);
 
 	/*
 	 * Pretend we are using VLANs; This bypasses a nasty bug where
