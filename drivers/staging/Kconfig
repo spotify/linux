@@ -125,5 +125,7 @@ source "drivers/staging/sep/Kconfig"
 
 source "drivers/staging/iio/Kconfig"
 
+source "drivers/staging/speakup/Kconfig"
+
 endif # !STAGING_EXCLUDE_BUILD
 endif # STAGING
