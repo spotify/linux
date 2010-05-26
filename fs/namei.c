@@ -350,6 +350,7 @@ int deny_write_access(struct file * file)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(deny_write_access);
 
 /**
  * path_get - get a reference to a path
@@ -1229,6 +1230,7 @@ struct dentry *lookup_hash(struct nameidata *nd)
 		return ERR_PTR(err);
 	return __lookup_hash(&nd->last, nd->path.dentry, nd);
 }
+EXPORT_SYMBOL_GPL(lookup_hash);
 
 int __lookup_one_len(const char *name, struct qstr *this,
 		struct dentry *base, int len)
@@ -1251,6 +1253,7 @@ int __lookup_one_len(const char *name, struct qstr *this,
 	this->hash = end_name_hash(hash);
 	return 0;
 }
+EXPORT_SYMBOL_GPL(__lookup_one_len);
 
 /**
  * lookup_one_len - filesystem helper to lookup single pathname component

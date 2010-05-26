@@ -1074,6 +1074,7 @@ long do_splice_from(struct pipe_inode_info *pipe, struct file *out,
 
 	return splice_write(pipe, out, ppos, len, flags);
 }
+EXPORT_SYMBOL_GPL(do_splice_from);
 
 /*
  * Attempt to initiate a splice from a file to a pipe.
@@ -1099,6 +1100,7 @@ long do_splice_to(struct file *in, loff_t *ppos,
 
 	return splice_read(in, ppos, pipe, len, flags);
 }
+EXPORT_SYMBOL_GPL(do_splice_to);
 
 /**
  * splice_direct_to_actor - splices data directly between two non-pipes

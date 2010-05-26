@@ -324,6 +324,7 @@ int ima_file_mmap(struct file *file, unsigned long prot)
 					 MAY_EXEC, FILE_MMAP);
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ima_file_mmap);
 
 /**
  * ima_bprm_check - based on policy, collect/store measurement.
