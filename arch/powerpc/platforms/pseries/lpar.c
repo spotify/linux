@@ -202,6 +202,7 @@ void __init find_udbg_vterm(void)
 	struct device_node *stdout_node;
 	const u32 *termno;
 	const char *name;
+	int add_console;
 
 	/* find the boot console from /chosen/stdout */
 	if (!of_chosen)
@@ -217,6 +218,8 @@ void __init find_udbg_vterm(void)
 		printk(KERN_WARNING "stdout node missing 'name' property!\n");
 		goto out;
 	}
+	/* The user has requested a console so this is already set up. */
+	add_console = !strstr(cmd_line, "console=");
 
 	/* Check if it's a virtual terminal */
 	if (strncmp(name, "vty", 3) != 0)
@@ -230,13 +233,15 @@ void __init find_udbg_vterm(void)
 		udbg_putc = udbg_putcLP;
 		udbg_getc = udbg_getcLP;
 		udbg_getc_poll = udbg_getc_pollLP;
-		add_preferred_console("hvc", termno[0] & 0xff, NULL);
+		if (add_console)
+			add_preferred_console("hvc", termno[0] & 0xff, NULL);
 	} else if (of_device_is_compatible(stdout_node, "hvterm-protocol")) {
 		vtermno = termno[0];
 		udbg_putc = udbg_hvsi_putc;
 		udbg_getc = udbg_hvsi_getc;
 		udbg_getc_poll = udbg_hvsi_getc_poll;
-		add_preferred_console("hvsi", termno[0] & 0xff, NULL);
+		if (add_console)
+			add_preferred_console("hvsi", termno[0] & 0xff, NULL);
 	}
 out:
 	of_node_put(stdout_node);
