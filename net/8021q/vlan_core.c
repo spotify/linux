@@ -102,12 +102,11 @@ drop:
 	return GRO_DROP;
 }
 
-gro_result_t vlan_gro_receive(struct napi_struct *napi, struct vlan_group *grp,
-			      unsigned int vlan_tci, struct sk_buff *skb)
+int vlan_gro_receive(struct napi_struct *napi, struct vlan_group *grp,
+		     unsigned int vlan_tci, struct sk_buff *skb)
 {
 	if (netpoll_rx_on(skb))
-		return vlan_hwaccel_receive_skb(skb, grp, vlan_tci)
-			? GRO_DROP : GRO_NORMAL;
+		return vlan_hwaccel_receive_skb(skb, grp, vlan_tci);
 
 	skb_gro_reset_offset(skb);
 
@@ -115,18 +114,17 @@ gro_result_t vlan_gro_receive(struct napi_struct *napi, struct vlan_group *grp,
 }
 EXPORT_SYMBOL(vlan_gro_receive);
 
-gro_result_t vlan_gro_frags(struct napi_struct *napi, struct vlan_group *grp,
-			    unsigned int vlan_tci)
+int vlan_gro_frags(struct napi_struct *napi, struct vlan_group *grp,
+		   unsigned int vlan_tci)
 {
 	struct sk_buff *skb = napi_frags_skb(napi);
 
 	if (!skb)
-		return GRO_DROP;
+		return NET_RX_DROP;
 
 	if (netpoll_rx_on(skb)) {
 		skb->protocol = eth_type_trans(skb, skb->dev);
-		return vlan_hwaccel_receive_skb(skb, grp, vlan_tci)
-			? GRO_DROP : GRO_NORMAL;
+		return vlan_hwaccel_receive_skb(skb, grp, vlan_tci);
 	}
 
 	return napi_frags_finish(napi, skb,
