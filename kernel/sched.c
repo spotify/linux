@@ -4099,11 +4099,22 @@ find_busiest_queue(struct sched_group *group, enum cpu_idle_type idle,
 			continue;
 
 		rq = cpu_rq(i);
-		wl = weighted_cpuload(i) * SCHED_LOAD_SCALE;
-		wl /= power;
+		wl = weighted_cpuload(i);
 
+		/*
+		 * When comparing with imbalance, use weighted_cpuload()
+		 * which is not scaled with the cpu power.
+		 */
 		if (capacity && rq->nr_running == 1 && wl > imbalance)
 			continue;
+
+		/*
+		 * For the load comparisons with the other cpu's, consider
+		 * the weighted_cpuload() scaled with the cpu power, so that
+		 * the load can be moved away from the cpu that is potentially
+		 * running at a lower capacity.
+		 */
+		wl = (wl * SCHED_LOAD_SCALE) / power;
 
 		if (wl > max_load) {
 			max_load = wl;
@@ -5999,7 +6010,7 @@ void rt_mutex_setprio(struct task_struct *p, int prio)
 	unsigned long flags;
 	int oldprio, on_rq, running;
 	struct rq *rq;
-	const struct sched_class *prev_class = p->sched_class;
+	const struct sched_class *prev_class;
 
 	BUG_ON(prio < 0 || prio > MAX_PRIO);
 
@@ -6007,6 +6018,7 @@ void rt_mutex_setprio(struct task_struct *p, int prio)
 	update_rq_clock(rq);
 
 	oldprio = p->prio;
+	prev_class = p->sched_class;
 	on_rq = p->se.on_rq;
 	running = task_current(rq, p);
 	if (on_rq)
@@ -6234,7 +6246,7 @@ static int __sched_setscheduler(struct task_struct *p, int policy,
 {
 	int retval, oldprio, oldpolicy = -1, on_rq, running;
 	unsigned long flags;
-	const struct sched_class *prev_class = p->sched_class;
+	const struct sched_class *prev_class;
 	struct rq *rq;
 	int reset_on_fork;
 
@@ -6348,6 +6360,7 @@ recheck:
 	p->sched_reset_on_fork = reset_on_fork;
 
 	oldprio = p->prio;
+	prev_class = p->sched_class;
 	__setscheduler(rq, p, policy, param->sched_priority);
 
 	if (running)
