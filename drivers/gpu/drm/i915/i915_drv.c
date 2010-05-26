@@ -170,9 +170,7 @@ const static struct pci_device_id pciidlist[] = {
 	{0, 0, 0}
 };
 
-#if defined(CONFIG_DRM_I915_KMS)
 MODULE_DEVICE_TABLE(pci, pciidlist);
-#endif
 
 static int i915_drm_freeze(struct drm_device *dev)
 {
