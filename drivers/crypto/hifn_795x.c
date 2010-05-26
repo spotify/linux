@@ -803,7 +803,7 @@ static int hifn_rng_data_present(struct hwrng *rng, int wait)
 		return 1;
 	if (!wait)
 		return 0;
-	ndelay(nsec);
+	ndelay((u32)nsec);
 	return 1;
 }
 
