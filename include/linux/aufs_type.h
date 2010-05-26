@@ -23,7 +23,7 @@
 #include <linux/limits.h>
 #include <linux/types.h>
 
-#define AUFS_VERSION	"2-standalone.tree-20091130"
+#define AUFS_VERSION	"2-standalone.tree-20091207"
 
 /* todo? move this to linux-2.6.19/include/magic.h */
 #define AUFS_SUPER_MAGIC	('a' << 24 | 'u' << 16 | 'f' << 8 | 's')
@@ -110,7 +110,10 @@ enum {
 
 	/* readdir in userspace */
 	AuCtl_RDU,
-	AuCtl_RDU_INO
+	AuCtl_RDU_INO,
+
+	/* pathconf wrapper */
+	AuCtl_WBR_FD
 };
 
 /* borrowed from linux/include/linux/kernel.h */
@@ -187,5 +190,6 @@ struct aufs_rdu {
 #define AUFS_CTL_PLINK_CLEAN	_IO(AuCtlType, AuCtl_PLINK_CLEAN)
 #define AUFS_CTL_RDU		_IOWR(AuCtlType, AuCtl_RDU, struct aufs_rdu)
 #define AUFS_CTL_RDU_INO	_IOWR(AuCtlType, AuCtl_RDU_INO, struct aufs_rdu)
+#define AUFS_CTL_WBR_FD		_IO(AuCtlType, AuCtl_WBR_FD)
 
 #endif /* __AUFS_TYPE_H__ */

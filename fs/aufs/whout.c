@@ -123,9 +123,8 @@ struct dentry *au_whtmp_lkup(struct dentry *h_parent, struct au_branch *br,
 {
 	struct dentry *dentry;
 	int i;
-	/* cf. AUFS_MAX_NAMELEN in include/linux/aufs_type.h */
-	char defname[AUFS_WH_PFX_LEN * 2 + DNAME_INLINE_LEN_MIN + 1
-		     + AUFS_WH_TMP_LEN + 1], *name, *p;
+	char defname[NAME_MAX - AUFS_MAX_NAMELEN + DNAME_INLINE_LEN_MIN + 1],
+		*name, *p;
 	static unsigned short cnt;
 	struct qstr qs;
 

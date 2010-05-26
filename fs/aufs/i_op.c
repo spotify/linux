@@ -159,6 +159,9 @@ static struct dentry *aufs_lookup(struct inode *dir, struct dentry *dentry,
 
 	sb = dir->i_sb;
 	si_read_lock(sb, AuLock_FLUSH);
+	ret = ERR_PTR(-ENAMETOOLONG);
+	if (unlikely(dentry->d_name.len > AUFS_MAX_NAMELEN))
+		goto out;
 	err = au_alloc_dinfo(dentry);
 	ret = ERR_PTR(err);
 	if (unlikely(err))

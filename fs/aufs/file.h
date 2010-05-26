@@ -94,6 +94,9 @@ void au_finfo_fin(struct file *file);
 int au_finfo_init(struct file *file);
 int au_fi_realloc(struct au_finfo *finfo, int nbr);
 
+/* ioctl.c */
+long aufs_ioctl_nondir(struct file *file, unsigned int cmd, unsigned long arg);
+
 /* ---------------------------------------------------------------------- */
 
 static inline struct au_finfo *au_fi(struct file *file)

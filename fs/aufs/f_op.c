@@ -810,6 +810,7 @@ const struct file_operations aufs_file_fop = {
 #ifdef CONFIG_AUFS_POLL
 	.poll		= aufs_poll,
 #endif
+	.unlocked_ioctl	= aufs_ioctl_nondir,
 	.mmap		= aufs_mmap,
 	.open		= aufs_open_nondir,
 	.flush		= aufs_flush,

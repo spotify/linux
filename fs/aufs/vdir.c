@@ -474,9 +474,12 @@ static int fillvdir(void *__arg, const char *__name, int nlen,
 
 		sb = arg->file->f_dentry->d_sb;
 		arg->err = au_ino(sb, arg->bindex, h_ino, d_type, &ino);
-		if (!arg->err)
+		if (!arg->err) {
+			if (unlikely(nlen > AUFS_MAX_NAMELEN))
+				d_type = DT_UNKNOWN;
 			arg->err = append_de(arg->vdir, name, nlen, ino,
 					     d_type, &arg->delist);
+		}
 	} else if (au_ftest_fillvdir(arg->flags, WHABLE)) {
 		name += AUFS_WH_PFX_LEN;
 		nlen -= AUFS_WH_PFX_LEN;
@@ -486,10 +489,13 @@ static int fillvdir(void *__arg, const char *__name, int nlen,
 		if (shwh)
 			arg->err = au_wh_ino(sb, arg->bindex, h_ino, d_type,
 					     &ino);
-		if (!arg->err)
+		if (!arg->err) {
+			if (nlen <= AUFS_MAX_NAMELEN + AUFS_WH_PFX_LEN)
+				d_type = DT_UNKNOWN;
 			arg->err = au_nhash_append_wh
 				(&arg->whlist, name, nlen, ino, d_type,
 				 arg->bindex, shwh);
+		}
 	}
 
  out:

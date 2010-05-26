@@ -59,6 +59,8 @@ static int au_rdu_fill(void *__arg, const char *name, int nlen,
 		ent.bindex = rdu->cookie.bindex;
 		ent.type = d_type;
 		ent.nlen = nlen;
+		if (unlikely(nlen > AUFS_MAX_NAMELEN))
+			ent.type = DT_UNKNOWN;
 
 		err = -EFAULT;
 		if (copy_to_user(arg->ent.e, &ent, sizeof(ent)))
