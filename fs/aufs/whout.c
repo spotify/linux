@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -72,9 +72,7 @@ int au_wh_test(struct dentry *h_parent, struct qstr *wh_name,
 {
 	int err;
 	struct dentry *wh_dentry;
-	struct inode *h_dir;
 
-	h_dir = h_parent->d_inode;
 	if (!try_sio)
 		wh_dentry = au_lkup_one(wh_name, h_parent, br, /*nd*/NULL);
 	else
@@ -481,7 +479,6 @@ int au_wh_init(struct dentry *h_root, struct au_branch *br,
 	if (wbr)
 		WbrWhMustWriteLock(wbr);
 
-	h_dir = h_root->d_inode;
 	for (i = 0; i < AuBrWh_Last; i++) {
 		/* doubly whiteouted */
 		struct dentry *d;
@@ -504,12 +501,12 @@ int au_wh_init(struct dentry *h_root, struct au_branch *br,
 		}
 
 	err = 0;
-
 	switch (br->br_perm) {
 	case AuBrPerm_RO:
 	case AuBrPerm_ROWH:
 	case AuBrPerm_RR:
 	case AuBrPerm_RRWH:
+		h_dir = h_root->d_inode;
 		au_wh_init_ro(h_dir, base, &path);
 		break;
 

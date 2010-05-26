@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,12 +25,7 @@
 #include "aufs.h"
 
 /* internal workqueue named AUFS_WKQ_NAME */
-static struct au_wkq {
-	struct workqueue_struct	*q;
-
-	/* balancing */
-	atomic_t		busy;
-} *au_wkq;
+static struct workqueue_struct *au_wkq;
 
 struct au_wkinfo {
 	struct work_struct wk;
@@ -41,60 +36,16 @@ struct au_wkinfo {
 	au_wkq_func_t func;
 	void *args;
 
-	atomic_t *busyp;
 	struct completion *comp;
 };
 
 /* ---------------------------------------------------------------------- */
-
-static int enqueue(struct au_wkq *wkq, struct au_wkinfo *wkinfo)
-{
-	wkinfo->busyp = &wkq->busy;
-	if (au_ftest_wkq(wkinfo->flags, WAIT))
-		return !queue_work(wkq->q, &wkinfo->wk);
-	else
-		return !schedule_work(&wkinfo->wk);
-}
-
-static void do_wkq(struct au_wkinfo *wkinfo)
-{
-	unsigned int idle, n;
-	int i, idle_idx;
-
-	while (1) {
-		if (au_ftest_wkq(wkinfo->flags, WAIT)) {
-			idle_idx = 0;
-			idle = UINT_MAX;
-			for (i = 0; i < aufs_nwkq; i++) {
-				n = atomic_inc_return(&au_wkq[i].busy);
-				if (n == 1 && !enqueue(au_wkq + i, wkinfo))
-					return; /* success */
-
-				if (n < idle) {
-					idle_idx = i;
-					idle = n;
-				}
-				atomic_dec(&au_wkq[i].busy);
-			}
-		} else
-			idle_idx = aufs_nwkq;
-
-		atomic_inc(&au_wkq[idle_idx].busy);
-		if (!enqueue(au_wkq + idle_idx, wkinfo))
-			return; /* success */
-
-		/* impossible? */
-		AuWarn1("failed to queue_work()\n");
-		yield();
-	}
-}
 
 static void wkq_func(struct work_struct *wk)
 {
 	struct au_wkinfo *wkinfo = container_of(wk, struct au_wkinfo, wk);
 
 	wkinfo->func(wkinfo->args);
-	atomic_dec_return(wkinfo->busyp);
 	if (au_ftest_wkq(wkinfo->flags, WAIT))
 		complete(wkinfo->comp);
 	else {
@@ -145,11 +96,14 @@ static void au_wkq_comp_free(struct completion *comp __maybe_unused)
 }
 #endif /* 4KSTACKS */
 
-static void au_wkq_run(struct au_wkinfo *wkinfo)
+static void au_wkq_run(struct au_wkinfo *wkinfo, int do_wait)
 {
 	au_dbg_verify_kthread();
 	INIT_WORK(&wkinfo->wk, wkq_func);
-	do_wkq(wkinfo);
+	if (do_wait)
+		queue_work(au_wkq, &wkinfo->wk);
+	else
+		schedule_work(&wkinfo->wk);
 }
 
 int au_wkq_wait(au_wkq_func_t func, void *args)
@@ -164,7 +118,7 @@ int au_wkq_wait(au_wkq_func_t func, void *args)
 
 	err = au_wkq_comp_alloc(&wkinfo, &comp);
 	if (!err) {
-		au_wkq_run(&wkinfo);
+		au_wkq_run(&wkinfo, AuWkq_WAIT);
 		/* no timeout, no interrupt */
 		wait_for_completion(wkinfo.comp);
 		au_wkq_comp_free(comp);
@@ -196,7 +150,7 @@ int au_wkq_nowait(au_wkq_func_t func, void *args, struct super_block *sb)
 		kobject_get(&au_sbi(sb)->si_kobj);
 		__module_get(THIS_MODULE);
 
-		au_wkq_run(wkinfo);
+		au_wkq_run(wkinfo, !AuWkq_WAIT);
 	} else {
 		err = -ENOMEM;
 		atomic_dec(&au_sbi(sb)->si_nowait.nw_len);
@@ -210,50 +164,17 @@ int au_wkq_nowait(au_wkq_func_t func, void *args, struct super_block *sb)
 void au_nwt_init(struct au_nowait_tasks *nwt)
 {
 	atomic_set(&nwt->nw_len, 0);
-	/* smp_mb();*/ /* atomic_set */
+	/* smp_mb(); */ /* atomic_set */
 	init_waitqueue_head(&nwt->nw_wq);
 }
 
 void au_wkq_fin(void)
 {
-	int i;
-
-	for (i = 0; i < aufs_nwkq; i++)
-		if (au_wkq[i].q && !IS_ERR(au_wkq[i].q))
-			destroy_workqueue(au_wkq[i].q);
-	kfree(au_wkq);
+	destroy_workqueue(au_wkq);
 }
 
 int __init au_wkq_init(void)
 {
-	int err, i;
-	struct au_wkq *nowaitq;
-
-	/* '+1' is for accounting of nowait queue */
-	err = -ENOMEM;
-	au_wkq = kcalloc(aufs_nwkq + 1, sizeof(*au_wkq), GFP_NOFS);
-	if (unlikely(!au_wkq))
-		goto out;
-
-	err = 0;
-	for (i = 0; i < aufs_nwkq; i++) {
-		au_wkq[i].q = create_singlethread_workqueue(AUFS_WKQ_NAME);
-		if (au_wkq[i].q && !IS_ERR(au_wkq[i].q)) {
-			atomic_set(&au_wkq[i].busy, 0);
-			continue;
-		}
-
-		err = PTR_ERR(au_wkq[i].q);
-		au_wkq_fin();
-		goto out;
-	}
-
-	/* nowait accounting */
-	nowaitq = au_wkq + aufs_nwkq;
-	atomic_set(&nowaitq->busy, 0);
-	nowaitq->q = NULL;
-	/* smp_mb(); */ /* atomic_set */
-
- out:
-	return err;
+	au_wkq = create_workqueue(AUFS_WKQ_NAME);
+	return 0;
 }

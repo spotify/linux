@@ -29,5 +29,6 @@ aufs-$(CONFIG_AUFS_HINOTIFY) += hinotify.o
 aufs-$(CONFIG_AUFS_EXPORT) += export.o
 aufs-$(CONFIG_AUFS_POLL) += poll.o
 aufs-$(CONFIG_AUFS_RDU) += rdu.o
+aufs-$(CONFIG_AUFS_SP_IATTR) += f_op_sp.o
 aufs-$(CONFIG_AUFS_DEBUG) += debug.o
 aufs-$(CONFIG_AUFS_MAGIC_SYSRQ) += sysrq.o

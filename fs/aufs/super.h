@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -129,6 +129,8 @@ struct au_sbinfo {
 	/* pseudo_link list */
 	struct au_splhead	si_plink;
 	wait_queue_head_t	si_plink_wq;
+	spinlock_t		si_plink_maint_lock;
+	struct file		*si_plink_maint;
 
 	/*
 	 * sysfs and lifetime management.
@@ -155,7 +157,6 @@ struct au_sbinfo {
  * if it is false, refreshing dirs at access time is unnecesary
  */
 #define AuSi_FAILED_REFRESH_DIRS	1
-#define AuSi_MAINTAIN_PLINK		(1 << 1)	/* ioctl */
 static inline unsigned char au_do_ftest_si(struct au_sbinfo *sbi,
 					   unsigned int flag)
 {
@@ -245,36 +246,12 @@ static inline int au_busy_or_stale(void)
 	return -ESTALE;
 }
 #else
-static inline void au_export_init(struct super_block *sb)
-{
-	/* nothing */
-}
-
-static inline int au_test_nfsd(struct task_struct *tsk)
-{
-	return 0;
-}
-
-static inline int au_xigen_inc(struct inode *inode)
-{
-	return 0;
-}
-
-static inline int au_xigen_new(struct inode *inode)
-{
-	return 0;
-}
-
-static inline int au_xigen_set(struct super_block *sb, struct file *base)
-{
-	return 0;
-}
-
-static inline void au_xigen_clr(struct super_block *sb)
-{
-	/* empty */
-}
-
+AuStubVoid(au_export_init, struct super_block *sb)
+AuStubInt0(au_test_nfsd, struct task_struct *tsk)
+AuStubInt0(au_xigen_inc, struct inode *inode)
+AuStubInt0(au_xigen_new, struct inode *inode)
+AuStubInt0(au_xigen_set, struct super_block *sb, struct file *base)
+AuStubVoid(au_xigen_clr, struct super_block *sb)
 static inline int au_busy_or_stale(void)
 {
 	return -EBUSY;

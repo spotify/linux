@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -221,10 +221,7 @@ static inline void au_hin_di_reinit(struct dentry *dentry)
 	dentry->d_fsdata = NULL;
 }
 #else
-static inline void au_hin_di_reinit(struct dentry *dentry __maybe_unused)
-{
-	/* empty */
-}
+AuStubVoid(au_hin_di_reinit, struct dentry *dentry __maybe_unused)
 #endif /* CONFIG_AUFS_HINOTIFY */
 
 #endif /* __KERNEL__ */

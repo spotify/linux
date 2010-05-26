@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,17 +34,9 @@ int au_test_loopback_overlap(struct super_block *sb, struct dentry *h_d1,
 			     struct dentry *h_d2);
 int au_test_loopback_kthread(void);
 #else
-static inline
-int au_test_loopback_overlap(struct super_block *sb, struct dentry *h_d1,
-			     struct dentry *h_d2)
-{
-	return 0;
-}
-
-static inline int au_test_loopback_kthread(void)
-{
-	return 0;
-}
+AuStubInt0(au_test_loopback_overlap, struct super_block *sb,
+	   struct dentry *h_d1, struct dentry *h_d2)
+AuStubInt0(au_test_loopback_kthread, void)
 #endif /* BLK_DEV_LOOP */
 
 #endif /* __KERNEL__ */

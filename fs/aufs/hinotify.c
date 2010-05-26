@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -750,6 +750,7 @@ int __init au_hinotify_init(void)
 void au_hinotify_fin(void)
 {
 	inotify_destroy(au_hin_handle);
+	/* cf. au_cache_fin() */
 	if (au_cachep[AuCache_HINOTIFY])
 		au_hin_destroy_cache();
 }

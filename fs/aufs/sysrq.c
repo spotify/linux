@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,9 +55,12 @@ static void sysrq_sb(struct super_block *sb)
 			au_dpri_inode(i);
 #endif
 	printk(KERN_WARNING AUFS_NAME ": files\n");
-	list_for_each_entry(file, &sb->s_files, f_u.fu_list)
-		if (!special_file(file->f_dentry->d_inode->i_mode))
+	list_for_each_entry(file, &sb->s_files, f_u.fu_list) {
+		umode_t mode;
+		mode = file->f_dentry->d_inode->i_mode;
+		if (!special_file(mode) || au_special_file(mode))
 			au_dpri_file(file);
+	}
 
 	au_plevel = plevel;
 	au_debug(0);

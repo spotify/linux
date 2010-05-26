@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -109,8 +109,7 @@ static int au_cpdown_dir(struct dentry *dentry, aufs_bindex_t bdst,
 			 struct dentry *h_parent, void *arg)
 {
 	int err, rerr;
-	aufs_bindex_t bend, bopq, bstart;
-	unsigned char parent_opq;
+	aufs_bindex_t bopq, bstart;
 	struct path h_path;
 	struct dentry *parent;
 	struct inode *h_dir, *h_inode, *inode, *dir;
@@ -135,7 +134,6 @@ static int au_cpdown_dir(struct dentry *dentry, aufs_bindex_t bdst,
 		goto out_put;
 	au_fset_cpdown(args->flags, MADE_DIR);
 
-	bend = au_dbend(dentry);
 	bopq = au_dbdiropq(dentry);
 	au_fclr_cpdown(args->flags, WHED);
 	au_fclr_cpdown(args->flags, DIROPQ);
@@ -143,8 +141,6 @@ static int au_cpdown_dir(struct dentry *dentry, aufs_bindex_t bdst,
 		au_fset_cpdown(args->flags, WHED);
 	if (!au_ftest_cpdown(args->flags, PARENT_OPQ) && bopq <= bdst)
 		au_fset_cpdown(args->flags, PARENT_OPQ);
-	parent_opq = (au_ftest_cpdown(args->flags, PARENT_OPQ)
-		      && args->parent == dentry);
 	h_inode = h_path.dentry->d_inode;
 	mutex_lock_nested(&h_inode->i_mutex, AuLsc_I_CHILD);
 	if (au_ftest_cpdown(args->flags, WHED)) {

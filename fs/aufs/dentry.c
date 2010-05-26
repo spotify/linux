@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,13 +102,11 @@ au_do_lookup(struct dentry *h_parent, struct dentry *dentry,
 {
 	struct dentry *h_dentry;
 	struct inode *h_inode, *inode;
-	struct qstr *name;
 	struct au_branch *br;
 	int wh_found, opq;
 	unsigned char wh_able;
 	const unsigned char allow_neg = !!au_ftest_lkup(args->flags, ALLOW_NEG);
 
-	name = &dentry->d_name;
 	wh_found = 0;
 	br = au_sbr(dentry->d_sb, bindex);
 	wh_able = !!au_br_whable(br->br_perm);
@@ -127,7 +125,7 @@ au_do_lookup(struct dentry *h_parent, struct dentry *dentry,
 		return NULL; /* success */
 
  real_lookup:
-	h_dentry = au_lkup_one(name, h_parent, br, args->nd);
+	h_dentry = au_lkup_one(&dentry->d_name, h_parent, br, args->nd);
 	if (IS_ERR(h_dentry))
 		goto out;
 
@@ -197,7 +195,6 @@ int au_lkup_dentry(struct dentry *dentry, aufs_bindex_t bstart, mode_t type,
 	struct dentry *parent;
 	struct inode *inode;
 
-	parent = dget_parent(dentry);
 	err = au_test_shwh(dentry->d_sb, name);
 	if (unlikely(err))
 		goto out;
@@ -212,6 +209,7 @@ int au_lkup_dentry(struct dentry *dentry, aufs_bindex_t bstart, mode_t type,
 		au_fset_lkup(args.flags, ALLOW_NEG);
 
 	npositive = 0;
+	parent = dget_parent(dentry);
 	btail = au_dbtaildir(parent);
 	for (bindex = bstart; bindex <= btail; bindex++) {
 		struct dentry *h_parent, *h_dentry;
@@ -238,7 +236,7 @@ int au_lkup_dentry(struct dentry *dentry, aufs_bindex_t bstart, mode_t type,
 		mutex_unlock(&h_dir->i_mutex);
 		err = PTR_ERR(h_dentry);
 		if (IS_ERR(h_dentry))
-			goto out_wh;
+			goto out_parent;
 		au_fclr_lkup(args.flags, ALLOW_NEG);
 
 		if (au_dbwh(dentry) >= 0)
@@ -271,10 +269,10 @@ int au_lkup_dentry(struct dentry *dentry, aufs_bindex_t bstart, mode_t type,
 		/* both of real entry and whiteout found */
 		err = -EIO;
 
- out_wh:
+ out_parent:
+	dput(parent);
 	kfree(whname.name);
  out:
-	dput(parent);
 	return err;
 }
 
@@ -310,12 +308,10 @@ int au_lkup_neg(struct dentry *dentry, aufs_bindex_t bindex)
 {
 	int err;
 	struct dentry *parent, *h_parent, *h_dentry;
-	struct qstr *name;
 
-	name = &dentry->d_name;
 	parent = dget_parent(dentry);
 	h_parent = au_h_dptr(parent, bindex);
-	h_dentry = au_sio_lkup_one(name, h_parent,
+	h_dentry = au_sio_lkup_one(&dentry->d_name, h_parent,
 				   au_sbr(dentry->d_sb, bindex));
 	err = PTR_ERR(h_dentry);
 	if (IS_ERR(h_dentry))
@@ -328,12 +324,12 @@ int au_lkup_neg(struct dentry *dentry, aufs_bindex_t bindex)
 		goto out;
 	}
 
+	err = 0;
 	if (bindex < au_dbstart(dentry))
 		au_set_dbstart(dentry, bindex);
 	if (au_dbend(dentry) < bindex)
 		au_set_dbend(dentry, bindex);
 	au_set_h_dptr(dentry, bindex, h_dentry);
-	err = 0;
 
  out:
 	dput(parent);

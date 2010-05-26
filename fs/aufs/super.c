@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -266,9 +266,9 @@ static int aufs_show_options(struct seq_file *m, struct vfsmount *mnt)
 	si_read_unlock(sb);
 	return 0;
 
-#undef Deleted
 #undef AuBool
 #undef AuStr
+#undef AuUInt
 }
 
 /* ---------------------------------------------------------------------- */
@@ -814,20 +814,14 @@ static int aufs_fill_super(struct super_block *sb, void *raw_data,
 
 	/* lock vfs_inode first, then aufs. */
 	mutex_lock(&inode->i_mutex);
-	inode->i_op = &aufs_dir_iop;
-	inode->i_fop = &aufs_dir_fop;
 	aufs_write_lock(root);
 	err = au_opts_mount(sb, &opts);
 	au_opts_free(&opts);
-	if (unlikely(err))
-		goto out_unlock;
 	aufs_write_unlock(root);
 	mutex_unlock(&inode->i_mutex);
-	goto out_opts; /* success */
+	if (!err)
+		goto out_opts; /* success */
 
- out_unlock:
-	aufs_write_unlock(root);
-	mutex_unlock(&inode->i_mutex);
  out_root:
 	dput(root);
 	sb->s_root = NULL;

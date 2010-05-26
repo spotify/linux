@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -122,7 +122,7 @@ static void au_nhash_de_do_free(struct hlist_head *head)
 
 	hlist_for_each_entry_safe(tpos, pos, node, head, hash) {
 		/* hlist_del(pos); */
-		au_cache_free_dehstr(tpos);
+		au_cache_free_vdir_dehstr(tpos);
 	}
 }
 
@@ -332,7 +332,7 @@ static int append_de(struct au_vdir *vdir, char *name, int nlen, ino_t ino,
 	}
 
 	err = -ENOMEM;
-	dehstr = au_cache_alloc_dehstr();
+	dehstr = au_cache_alloc_vdir_dehstr();
 	if (unlikely(!dehstr))
 		goto out;
 

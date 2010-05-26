@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -203,14 +203,12 @@ void au_iinfo_fin(struct inode *inode);
 int au_ii_realloc(struct au_iinfo *iinfo, int nbr);
 
 /* plink.c */
-void au_plink_block_maintain(struct super_block *sb);
+void au_plink_maint_block(struct super_block *sb);
+void au_plink_maint_leave(struct file *file);
 #ifdef CONFIG_AUFS_DEBUG
 void au_plink_list(struct super_block *sb);
 #else
-static inline void au_plink_list(struct super_block *sb)
-{
-	/* nothing */
-}
+AuStubVoid(au_plink_list, struct super_block *sb)
 #endif
 int au_plink_test(struct inode *inode);
 struct dentry *au_plink_lkup(struct inode *inode, aufs_bindex_t bindex);
@@ -432,36 +430,15 @@ int au_hin_alloc(struct au_hinode *hinode __maybe_unused,
 	return -EOPNOTSUPP;
 }
 
-static inline void au_hin_free(struct au_hinode *hinode __maybe_unused)
-{
-	/* nothing */
-}
-
-static inline void au_hin_ctl(struct au_hinode *hinode __maybe_unused,
-			      int do_set __maybe_unused)
-{
-	/* nothing */
-}
-
-static inline void au_reset_hinotify(struct inode *inode __maybe_unused,
-				     unsigned int flags __maybe_unused)
-{
-	/* nothing */
-}
-
-static inline int au_hinotify_init(void)
-{
-	return 0;
-}
-
-#define au_hinotify_fin()	do {} while (0)
-
-static inline
-void au_hin_init(struct au_hinode *hinode __maybe_unused,
-		 struct au_hinotify *val __maybe_unused)
-{
-	/* empty */
-}
+AuStubVoid(au_hin_free, struct au_hinode *hinode __maybe_unused)
+AuStubVoid(au_hin_ctl, struct au_hinode *hinode __maybe_unused,
+	   int do_set __maybe_unused)
+AuStubVoid(au_reset_hinotify, struct inode *inode __maybe_unused,
+	   unsigned int flags __maybe_unused)
+AuStubInt0(__init au_hinotify_init, void)
+AuStubVoid(au_hinotify_fin, void)
+AuStubVoid(au_hin_init, struct au_hinode *hinode __maybe_unused,
+	   struct au_hinotify *val __maybe_unused)
 #endif /* CONFIG_AUFS_HINOTIFY */
 
 static inline void au_hin_suspend(struct au_hinode *hdir)

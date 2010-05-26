@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,12 +49,12 @@ int vfsub_update_h_iattr(struct path *h_path, int *did)
 
 /* ---------------------------------------------------------------------- */
 
-struct file *vfsub_dentry_open(struct path *path, int flags,
-			       const struct cred *cred)
+struct file *vfsub_dentry_open(struct path *path, int flags)
 {
 	struct file *file;
 
-	file = dentry_open(path->dentry, path->mnt, flags, cred);
+	path_get(path);
+	file = dentry_open(path->dentry, path->mnt, flags, current_cred());
 	if (IS_ERR(file))
 		return file;
 	/* as NFSD does, just call ima_..._get() simply after dentry_open */
@@ -119,9 +119,12 @@ struct dentry *vfsub_lookup_hash(struct nameidata *nd)
 	IMustLock(nd->path.dentry->d_inode);
 
 	path.dentry = lookup_hash(nd);
-	if (!IS_ERR(path.dentry) && path.dentry->d_inode)
+	if (IS_ERR(path.dentry))
+		goto out;
+	if (path.dentry->d_inode)
 		vfsub_update_h_iattr(&path, /*did*/NULL); /*ignore*/
 
+ out:
 	AuTraceErrPtr(path.dentry);
 	return path.dentry;
 }

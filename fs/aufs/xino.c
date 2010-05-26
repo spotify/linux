@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -127,11 +127,11 @@ ssize_t xino_fwrite(au_writef_t func, struct file *file, void *buf, size_t size,
 struct file *au_xino_create2(struct file *base_file, struct file *copy_src)
 {
 	struct file *file;
-	struct dentry *base, *dentry, *parent;
+	struct dentry *base, *parent;
 	struct inode *dir;
 	struct qstr *name;
-	int err;
 	struct path path;
+	int err;
 
 	base = base_file->f_dentry;
 	parent = base->d_parent; /* dir inode is locked */
@@ -140,27 +140,25 @@ struct file *au_xino_create2(struct file *base_file, struct file *copy_src)
 
 	file = ERR_PTR(-EINVAL);
 	name = &base->d_name;
-	dentry = vfsub_lookup_one_len(name->name, parent, name->len);
-	if (IS_ERR(dentry)) {
-		file = (void *)dentry;
+	path.dentry = vfsub_lookup_one_len(name->name, parent, name->len);
+	if (IS_ERR(path.dentry)) {
+		file = (void *)path.dentry;
 		pr_err("%.*s lookup err %ld\n",
-		       AuLNPair(name), PTR_ERR(dentry));
+		       AuLNPair(name), PTR_ERR(path.dentry));
 		goto out;
 	}
 
 	/* no need to mnt_want_write() since we call dentry_open() later */
-	err = vfs_create(dir, dentry, S_IRUGO | S_IWUGO, NULL);
+	err = vfs_create(dir, path.dentry, S_IRUGO | S_IWUGO, NULL);
 	if (unlikely(err)) {
 		file = ERR_PTR(err);
 		pr_err("%.*s create err %d\n", AuLNPair(name), err);
 		goto out_dput;
 	}
 
-	path.dentry = dentry;
 	path.mnt = base_file->f_vfsmnt;
-	path_get(&path);
-	file = vfsub_dentry_open(&path, O_RDWR | O_CREAT | O_EXCL | O_LARGEFILE,
-				 current_cred());
+	file = vfsub_dentry_open(&path,
+				 O_RDWR | O_CREAT | O_EXCL | O_LARGEFILE);
 	if (IS_ERR(file)) {
 		pr_err("%.*s open err %ld\n", AuLNPair(name), PTR_ERR(file));
 		goto out_dput;
@@ -187,7 +185,7 @@ struct file *au_xino_create2(struct file *base_file, struct file *copy_src)
 	fput(file);
 	file = ERR_PTR(err);
  out_dput:
-	dput(dentry);
+	dput(path.dentry);
  out:
 	return file;
 }

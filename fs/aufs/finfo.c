@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 Junjiro R. Okajima
+ * Copyright (C) 2005-2010 Junjiro R. Okajima
  *
  * This program, aufs is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,8 @@
 
 void au_hfput(struct au_hfile *hf, struct file *file)
 {
-	if (file->f_flags & vfsub_fmode_to_uint(FMODE_EXEC))
+	/* todo: direct access f_flags */
+	if (vfsub_file_flags(file) & vfsub_fmode_to_uint(FMODE_EXEC))
 		allow_write_access(hf->hf_file);
 	fput(hf->hf_file);
 	hf->hf_file = NULL;
@@ -42,6 +43,7 @@ void au_set_h_fptr(struct file *file, aufs_bindex_t bindex, struct file *val)
 	if (hf->hf_file)
 		au_hfput(hf, file);
 	if (val) {
+		FiMustWriteLock(file);
 		hf->hf_file = val;
 		hf->hf_br = au_sbr(file->f_dentry->d_sb, bindex);
 	}
@@ -60,21 +62,20 @@ void au_finfo_fin(struct file *file)
 	struct au_finfo *finfo;
 	aufs_bindex_t bindex, bend;
 
-	fi_write_lock(file);
-	bend = au_fbend(file);
-	bindex = au_fbstart(file);
-	if (bindex >= 0)
+	finfo = au_fi(file);
+	bindex = finfo->fi_bstart;
+	if (bindex >= 0) {
 		/*
 		 * calls fput() instead of filp_close(),
 		 * since no dnotify or lock for the lower file.
 		 */
+		bend = finfo->fi_bend;
 		for (; bindex <= bend; bindex++)
 			au_set_h_fptr(file, bindex, NULL);
+	}
 
-	finfo = au_fi(file);
 	au_dbg_verify_hf(finfo);
 	kfree(finfo->fi_hfile);
-	fi_write_unlock(file);
 	AuRwDestroy(&finfo->fi_rwsem);
 	au_cache_free_finfo(finfo);
 }
