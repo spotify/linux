@@ -3358,7 +3358,10 @@ static int __devinit hpsa_pci_init(struct ctlr_info *h)
 	if (err)
 		goto err_out_free_res;
 	h->vaddr = remap_pci_mem(h->paddr, 0x250);
-
+	if (!h->vaddr) {
+		err = -ENOMEM;
+		goto err_out_free_res;
+	}
 	err = hpsa_wait_for_board_ready(h);
 	if (err)
 		goto err_out_free_res;
@@ -3445,6 +3448,12 @@ static int __devinit hpsa_pci_init(struct ctlr_info *h)
 	return 0;
 
 err_out_free_res:
+	if (h->transtable)
+		iounmap(h->transtable);
+	if (h->cfgtable)
+		iounmap(h->cfgtable);
+	if (h->vaddr)
+		iounmap(h->vaddr);
 	/*
 	 * Deliberately omit pci_disable_device(): it does something nasty to
 	 * Smart Array controllers that pci_enable_device does not undo
@@ -3663,6 +3672,8 @@ static void __devexit hpsa_remove_one(struct pci_dev *pdev)
 	hpsa_unregister_scsi(h);	/* unhook from SCSI subsystem */
 	hpsa_shutdown(pdev);
 	iounmap(h->vaddr);
+	iounmap(h->transtable);
+	iounmap(h->cfgtable);
 	hpsa_free_sg_chain_blocks(h);
 	pci_free_consistent(h->pdev,
 		h->nr_cmds * sizeof(struct CommandList),
