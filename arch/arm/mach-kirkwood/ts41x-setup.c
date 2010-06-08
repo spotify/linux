@@ -239,8 +239,8 @@ static void __init qnap_ts41x_init(void)
 
 static int __init ts41x_pci_init(void)
 {
-   if (machine_is_ts41x())
-           kirkwood_pcie_init();
+	if (machine_is_ts41x())
+		kirkwood_pcie_init(KW_PCIE0);
 
    return 0;
 }
