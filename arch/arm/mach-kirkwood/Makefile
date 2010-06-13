@@ -10,5 +10,6 @@ obj-$(CONFIG_MACH_GURUPLUG)		+= guruplug-setup.o
 obj-$(CONFIG_MACH_TS219)		+= ts219-setup.o
 obj-$(CONFIG_MACH_TS41X)		+= ts41x-setup.o
 obj-$(CONFIG_MACH_OPENRD)		+= openrd-setup.o
+obj-$(CONFIG_MACH_T5325)		+= t5325-setup.o
 
 obj-$(CONFIG_CPU_IDLE)			+= cpuidle.o

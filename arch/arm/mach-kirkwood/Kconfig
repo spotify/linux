@@ -81,6 +81,12 @@ config MACH_OPENRD_ULTIMATE
 	  Say 'Y' here if you want your kernel to support the
 	  Marvell OpenRD Ultimate Board.
 
+config MACH_T5325
+	bool "HP t5325 Thin Client"
+	help
+	  Say 'Y' here if you want your kernel to support the
+	  HP t5325 Thin Client.
+
 endmenu
 
 endif
