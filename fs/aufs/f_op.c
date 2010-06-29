@@ -666,7 +666,7 @@ static int aufs_mmap(struct file *file, struct vm_area_struct *vma)
 		.errp		= &err
 	};
 
-	wkq_err = au_wkq_wait(au_call_mmap_pre, &args);
+	wkq_err = au_wkq_wait_pre(au_call_mmap_pre, &args);
 	if (unlikely(wkq_err))
 		err = wkq_err;
 	if (unlikely(err))

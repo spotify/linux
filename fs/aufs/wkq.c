@@ -24,8 +24,23 @@
 #include <linux/module.h>
 #include "aufs.h"
 
-/* internal workqueue named AUFS_WKQ_NAME */
-static struct workqueue_struct *au_wkq;
+/* internal workqueue named AUFS_WKQ_NAME and AUFS_WKQ_PRE_NAME */
+enum {
+	AuWkq_INORMAL,
+	AuWkq_IPRE
+};
+
+static struct {
+	char *name;
+	struct workqueue_struct *wkq;
+} au_wkq[] = {
+	[AuWkq_INORMAL] = {
+		.name = AUFS_WKQ_NAME
+	},
+	[AuWkq_IPRE] = {
+		.name = AUFS_WKQ_PRE_NAME
+	}
+};
 
 struct au_wkinfo {
 	struct work_struct wk;
@@ -96,29 +111,34 @@ static void au_wkq_comp_free(struct completion *comp __maybe_unused)
 }
 #endif /* 4KSTACKS */
 
-static void au_wkq_run(struct au_wkinfo *wkinfo, int do_wait)
+static void au_wkq_run(struct au_wkinfo *wkinfo, unsigned int flags)
 {
+	struct workqueue_struct *wkq;
+
 	au_dbg_verify_kthread();
 	INIT_WORK(&wkinfo->wk, wkq_func);
-	if (do_wait)
-		queue_work(au_wkq, &wkinfo->wk);
-	else
+	if (flags & AuWkq_WAIT) {
+		wkq = au_wkq[AuWkq_INORMAL].wkq;
+		if (flags & AuWkq_PRE)
+			wkq = au_wkq[AuWkq_IPRE].wkq;
+		queue_work(wkq, &wkinfo->wk);
+	} else
 		schedule_work(&wkinfo->wk);
 }
 
-int au_wkq_wait(au_wkq_func_t func, void *args)
+int au_wkq_do_wait(unsigned int flags, au_wkq_func_t func, void *args)
 {
 	int err;
 	AuWkqCompDeclare(comp);
 	struct au_wkinfo wkinfo = {
-		.flags	= AuWkq_WAIT,
+		.flags	= flags,
 		.func	= func,
 		.args	= args
 	};
 
 	err = au_wkq_comp_alloc(&wkinfo, &comp);
 	if (!err) {
-		au_wkq_run(&wkinfo, AuWkq_WAIT);
+		au_wkq_run(&wkinfo, flags);
 		/* no timeout, no interrupt */
 		wait_for_completion(wkinfo.comp);
 		au_wkq_comp_free(comp);
@@ -170,11 +190,29 @@ void au_nwt_init(struct au_nowait_tasks *nwt)
 
 void au_wkq_fin(void)
 {
-	destroy_workqueue(au_wkq);
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(au_wkq); i++)
+		if (au_wkq[i].wkq)
+			destroy_workqueue(au_wkq[i].wkq);
 }
 
 int __init au_wkq_init(void)
 {
-	au_wkq = create_workqueue(AUFS_WKQ_NAME);
-	return 0;
+	int err, i;
+
+	err = 0;
+	for (i = 0; !err && i < ARRAY_SIZE(au_wkq); i++) {
+		au_wkq[i].wkq = create_workqueue(au_wkq[i].name);
+		if (IS_ERR(au_wkq[i].wkq))
+			err = PTR_ERR(au_wkq[i].wkq);
+		else if (!au_wkq[i].wkq)
+			err = -ENOMEM;
+		if (unlikely(err))
+			au_wkq[i].wkq = NULL;
+	}
+	if (unlikely(err))
+		au_wkq_fin();
+
+	return err;
 }
