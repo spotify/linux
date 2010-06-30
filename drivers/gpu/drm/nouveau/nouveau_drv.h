@@ -493,6 +493,7 @@ enum nouveau_card_type {
 
 struct drm_nouveau_private {
 	struct drm_device *dev;
+	bool noaccel;
 	enum {
 		NOUVEAU_CARD_INIT_DOWN,
 		NOUVEAU_CARD_INIT_DONE,

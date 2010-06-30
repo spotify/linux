@@ -435,7 +435,7 @@ nouveau_card_init(struct drm_device *dev)
 	if (ret)
 		goto out_timer;
 
-	if (nouveau_noaccel)
+	if (dev_priv->noaccel)
 		engine->graph.accel_blocked = true;
 	else {
 		/* PGRAPH */
@@ -491,10 +491,10 @@ nouveau_card_init(struct drm_device *dev)
 out_irq:
 	drm_irq_uninstall(dev);
 out_fifo:
-	if (!nouveau_noaccel)
+	if (!dev_priv->noaccel)
 		engine->fifo.takedown(dev);
 out_graph:
-	if (!nouveau_noaccel)
+	if (!dev_priv->noaccel)
 		engine->graph.takedown(dev);
 out_fb:
 	engine->fb.takedown(dev);
@@ -532,7 +532,7 @@ static void nouveau_card_takedown(struct drm_device *dev)
 			dev_priv->channel = NULL;
 		}
 
-		if (!nouveau_noaccel) {
+		if (!dev_priv->noaccel) {
 			engine->fifo.takedown(dev);
 			engine->graph.takedown(dev);
 		}
@@ -690,6 +690,21 @@ int nouveau_load(struct drm_device *dev, unsigned long flags)
 
 	NV_INFO(dev, "Detected an NV%2x generation card (0x%08x)\n",
 		dev_priv->card_type, reg0);
+
+	if (nouveau_noaccel == -1) {
+		switch (dev_priv->chipset) {
+		case 0xa3:
+		case 0xa5:
+		case 0xa8:
+			dev_priv->noaccel = true;
+			break;
+		default:
+			dev_priv->noaccel = false;
+			break;
+		}
+	} else {
+		dev_priv->noaccel = (nouveau_noaccel != 0);
+	}
 
 	/* map larger RAMIN aperture on NV40 cards */
 	dev_priv->ramin  = NULL;
