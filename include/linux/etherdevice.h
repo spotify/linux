@@ -126,6 +126,11 @@ static inline void random_ether_addr(u8 *addr)
 	addr [0] |= 0x02;	/* set local assignment bit (IEEE802) */
 }
 
+static inline void dev_hw_addr_random(struct net_device *dev, u8 *hwaddr)
+{
+	random_ether_addr(hwaddr);
+}
+
 /**
  * compare_ether_addr - Compare two Ethernet addresses
  * @addr1: Pointer to a six-byte array containing the Ethernet address
