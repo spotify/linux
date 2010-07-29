@@ -1259,6 +1259,7 @@ void xen_hvm_init_shared_info(void)
 	}
 }
 
+#ifdef CONFIG_XEN_PVHVM
 static int __cpuinit xen_hvm_cpu_notify(struct notifier_block *self,
 				    unsigned long action, void *hcpu)
 {
@@ -1300,3 +1301,4 @@ void __init xen_hvm_guest_init(void)
 	xen_hvm_init_time_ops();
 	xen_hvm_init_mmu_ops();
 }
+#endif
