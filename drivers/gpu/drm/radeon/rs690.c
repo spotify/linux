@@ -150,6 +150,7 @@ void rs690_vram_info(struct radeon_device *rdev)
 	if (rdev->mc.real_vram_size > rdev->mc.aper_size)
 		rdev->mc.real_vram_size = rdev->mc.aper_size;
 
+	rdev->mc.igp_sideport_enabled = radeon_atombios_sideport_present(rdev);
 	rs690_pm_info(rdev);
 	/* FIXME: we should enforce default clock in case GPU is not in
 	 * default setup
@@ -172,7 +173,6 @@ static int rs690_mc_init(struct radeon_device *rdev)
 	rdev->mc.vram_location = G_000100_MC_FB_START(tmp) << 16;
 	rdev->mc.gtt_location = 0xFFFFFFFFUL;
 	r = radeon_mc_setup(rdev);
-	rdev->mc.igp_sideport_enabled = radeon_atombios_sideport_present(rdev);
 	if (r)
 		return r;
 	return 0;
