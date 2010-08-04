@@ -26,6 +26,13 @@
 /* Define the following to 1 to enable a printk on each coreswitch. */
 #define SSB_VERBOSE_PCICORESWITCH_DEBUG		0
 
+#define SSB_QUIRK_SPROM_BASE31 (1 << 1)
+
+static inline u16 ssb_sprom_offset(const struct ssb_bus *bus)
+{
+	return (bus->quirks & SSB_QUIRK_SPROM_BASE31) ?
+		SSB_SPROM_BASE31 : SSB_SPROM_BASE1;
+}
 
 /* Lowlevel coreswitching */
 int ssb_pci_switch_coreidx(struct ssb_bus *bus, u8 coreidx)
@@ -253,7 +260,7 @@ static int sprom_do_read(struct ssb_bus *bus, u16 *sprom)
 	int i;
 
 	for (i = 0; i < bus->sprom_size; i++)
-		sprom[i] = ioread16(bus->mmio + bus->sprom_offset + (i * 2));
+		sprom[i] = ioread16(bus->mmio + ssb_sprom_offset(bus) + (i * 2));
 
 	return 0;
 }
@@ -284,7 +291,7 @@ static int sprom_do_write(struct ssb_bus *bus, const u16 *sprom)
 			ssb_printk("75%%");
 		else if (i % 2)
 			ssb_printk(".");
-		writew(sprom[i], bus->mmio + bus->sprom_offset + (i * 2));
+		writew(sprom[i], bus->mmio + ssb_sprom_offset(bus) + (i * 2));
 		mmiowb();
 		msleep(20);
 	}
@@ -631,16 +638,12 @@ static int ssb_pci_sprom_get(struct ssb_bus *bus,
 		 * chipcommon status & 3 == 2
 		 */
 		if (bus->chipco.dev->id.revision >= 31)
-			bus->sprom_offset = SSB_SPROM_BASE31;
+			bus->quirks |= SSB_QUIRK_SPROM_BASE31;
 		else if (bus->chip_id == 0x4312 &&
 			 (bus->chipco.status & 0x03) == 2)
-			bus->sprom_offset = SSB_SPROM_BASE31;
-		else
-			bus->sprom_offset = SSB_SPROM_BASE1;
-	} else {
-		bus->sprom_offset = SSB_SPROM_BASE1;
+			bus->quirks |= SSB_QUIRK_SPROM_BASE31;
 	}
-	ssb_dprintk(KERN_INFO PFX "SPROM offset is 0x%x\n", bus->sprom_offset);
+	ssb_dprintk(KERN_INFO PFX "SPROM offset is 0x%x\n", ssb_sprom_offset(bus));
 
 	buf = kcalloc(SSB_SPROMSIZE_WORDS_R123, sizeof(u16), GFP_KERNEL);
 	if (!buf)
