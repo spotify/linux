@@ -2955,6 +2955,10 @@ int submit_bh(int rw, struct buffer_head * bh)
 	BUG_ON(buffer_delay(bh));
 	BUG_ON(buffer_unwritten(bh));
 
+	/* Fix broken value of RWA_MASK */
+	if (rw & 2)
+		rw ^= 2 | RWA_MASK;
+
 	/*
 	 * Mask in barrier bit for a write (could be either a WRITE or a
 	 * WRITE_SYNC
@@ -3027,6 +3031,10 @@ EXPORT_SYMBOL(submit_bh);
 void ll_rw_block(int rw, int nr, struct buffer_head *bhs[])
 {
 	int i;
+
+	/* Fix broken value of RWA_MASK */
+	if (rw & 2)
+		rw ^= 2 | RWA_MASK;
 
 	for (i = 0; i < nr; i++) {
 		struct buffer_head *bh = bhs[i];
