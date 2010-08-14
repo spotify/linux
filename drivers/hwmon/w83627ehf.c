@@ -38,6 +38,7 @@
     w83627dhg    9      5       4       3      0xa020 0xc1    0x5ca3
     w83627dhg-p  9      5       4       3      0xb070 0xc1    0x5ca3
     w83667hg     9      5       3       3      0xa510 0xc1    0x5ca3
+    w83667hg-b   9      5       3       3      0xb350 0xc1    0x5ca3
 */
 
 #include <linux/module.h>
@@ -54,13 +55,14 @@
 #include <linux/io.h>
 #include "lm75.h"
 
-enum kinds { w83627ehf, w83627dhg, w83627dhg_p, w83667hg };
+enum kinds { w83627ehf, w83627dhg, w83627dhg_p, w83667hg, w83667hg_b };
 
 /* used to set data->name = w83627ehf_device_names[data->sio_kind] */
 static const char * w83627ehf_device_names[] = {
 	"w83627ehf",
 	"w83627dhg",
 	"w83627dhg",
+	"w83667hg",
 	"w83667hg",
 };
 
@@ -90,6 +92,7 @@ MODULE_PARM_DESC(force_id, "Override the detected device ID");
 #define SIO_W83627DHG_ID	0xa020
 #define SIO_W83627DHG_P_ID	0xb070
 #define SIO_W83667HG_ID 	0xa510
+#define SIO_W83667HG_B_ID	0xb350
 #define SIO_ID_MASK		0xFFF0
 
 static inline void
@@ -1309,10 +1312,11 @@ static int __devinit w83627ehf_probe(struct platform_device *pdev)
 	/* 627EHG and 627EHF have 10 voltage inputs; 627DHG and 667HG have 9 */
 	data->in_num = (sio_data->kind == w83627ehf) ? 10 : 9;
 	/* 667HG has 3 pwms */
-	data->pwm_num = (sio_data->kind == w83667hg) ? 3 : 4;
+	data->pwm_num = (sio_data->kind == w83667hg
+			 || sio_data->kind == w83667hg_b) ? 3 : 4;
 
 	/* Check temp3 configuration bit for 667HG */
-	if (sio_data->kind == w83667hg) {
+	if (sio_data->kind == w83667hg || sio_data->kind == w83667hg_b) {
 		data->temp3_disable = w83627ehf_read_value(data,
 					W83627EHF_REG_TEMP_CONFIG[1]) & 0x01;
 		data->in6_skip = !data->temp3_disable;
@@ -1324,7 +1328,7 @@ static int __devinit w83627ehf_probe(struct platform_device *pdev)
 	data->vrm = vid_which_vrm();
 	superio_enter(sio_data->sioreg);
 	/* Read VID value */
-	if (sio_data->kind == w83667hg) {
+	if (sio_data->kind == w83667hg || sio_data->kind == w83667hg_b) {
 		/* W83667HG has different pins for VID input and output, so
 		we can get the VID input values directly at logical device D
 		0xe3. */
@@ -1375,7 +1379,7 @@ static int __devinit w83627ehf_probe(struct platform_device *pdev)
 	}
 
 	/* fan4 and fan5 share some pins with the GPIO and serial flash */
-	if (sio_data->kind == w83667hg) {
+	if (sio_data->kind == w83667hg || sio_data->kind == w83667hg_b) {
 		fan5pin = superio_inb(sio_data->sioreg, 0x27) & 0x20;
 		fan4pin = superio_inb(sio_data->sioreg, 0x27) & 0x40;
 	} else {
@@ -1522,6 +1526,7 @@ static int __init w83627ehf_find(int sioaddr, unsigned short *addr,
 	static const char __initdata sio_name_W83627DHG[] = "W83627DHG";
 	static const char __initdata sio_name_W83627DHG_P[] = "W83627DHG-P";
 	static const char __initdata sio_name_W83667HG[] = "W83667HG";
+	static const char __initdata sio_name_W83667HG_B[] = "W83667HG-B";
 
 	u16 val;
 	const char *sio_name;
@@ -1553,6 +1558,10 @@ static int __init w83627ehf_find(int sioaddr, unsigned short *addr,
 	case SIO_W83667HG_ID:
 		sio_data->kind = w83667hg;
 		sio_name = sio_name_W83667HG;
+		break;
+	case SIO_W83667HG_B_ID:
+		sio_data->kind = w83667hg_b;
+		sio_name = sio_name_W83667HG_B;
 		break;
 	default:
 		if (val != 0xffff)
