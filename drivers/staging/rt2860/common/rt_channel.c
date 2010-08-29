@@ -1405,8 +1405,8 @@ struct rt_ch_region ChRegion[] = {
 	 "",
 	 CE,
 	 {
-	  {1, 11, 20, BOTH, FALSE}
-	  ,			/* 2.4 G, ch 1~11 */
+	  {1, 14, 20, BOTH, FALSE}
+	  ,			/* 2.4 G, ch 1~14 */
 	  {36, 4, 20, BOTH, FALSE}
 	  ,			/* 5G, ch 52~64 */
 	  {52, 4, 20, BOTH, FALSE}
