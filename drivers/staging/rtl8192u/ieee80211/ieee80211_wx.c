@@ -866,13 +866,19 @@ int ieee80211_wx_set_gen_ie(struct ieee80211_device *ieee, u8 *ie, size_t len)
 
 }
 
+/*
 EXPORT_SYMBOL(ieee80211_wx_set_gen_ie);
+*/
 #if (WIRELESS_EXT >= 18)
+/*
 EXPORT_SYMBOL(ieee80211_wx_set_mlme);
 EXPORT_SYMBOL(ieee80211_wx_set_auth);
 EXPORT_SYMBOL(ieee80211_wx_set_encode_ext);
 EXPORT_SYMBOL(ieee80211_wx_get_encode_ext);
+*/
 #endif
+/*
 EXPORT_SYMBOL(ieee80211_wx_get_scan);
 EXPORT_SYMBOL(ieee80211_wx_set_encode);
 EXPORT_SYMBOL(ieee80211_wx_get_encode);
+*/

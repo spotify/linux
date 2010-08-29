@@ -3266,6 +3266,7 @@ void notify_wx_assoc_event(struct ieee80211_device *ieee)
 	wireless_send_event(ieee->dev, SIOCGIWAP, &wrqu, NULL);
 }
 
+/*
 EXPORT_SYMBOL(ieee80211_get_beacon);
 EXPORT_SYMBOL(ieee80211_wake_queue);
 EXPORT_SYMBOL(ieee80211_stop_queue);
@@ -3286,4 +3287,5 @@ EXPORT_SYMBOL(ieee80211_stop_scan);
 EXPORT_SYMBOL(ieee80211_send_probe_requests);
 EXPORT_SYMBOL(ieee80211_softmac_scan_syncro);
 EXPORT_SYMBOL(ieee80211_start_scan_syncro);
+*/
 //EXPORT_SYMBOL(ieee80211_sta_ps_send_null_frame);

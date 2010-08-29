@@ -239,8 +239,10 @@ EXPORT_SYMBOL_GPL(crypto_free_tfm);
 EXPORT_SYMBOL_GPL(crypto_alg_available);
 */
 
+/*
 EXPORT_SYMBOL_NOVERS(crypto_register_alg);
 EXPORT_SYMBOL_NOVERS(crypto_unregister_alg);
 EXPORT_SYMBOL_NOVERS(crypto_alloc_tfm);
 EXPORT_SYMBOL_NOVERS(crypto_free_tfm);
 EXPORT_SYMBOL_NOVERS(crypto_alg_available);
+*/

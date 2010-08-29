@@ -595,6 +595,7 @@ exit:
 	return ret;
 
 }
+/*
 EXPORT_SYMBOL(ieee80211_wx_get_essid);
 EXPORT_SYMBOL(ieee80211_wx_set_essid);
 EXPORT_SYMBOL(ieee80211_wx_set_rate);
@@ -613,3 +614,4 @@ EXPORT_SYMBOL(ieee80211_wx_get_power);
 EXPORT_SYMBOL(ieee80211_wlan_frequencies);
 EXPORT_SYMBOL(ieee80211_wx_set_rts);
 EXPORT_SYMBOL(ieee80211_wx_get_rts);
+*/
