@@ -13,6 +13,7 @@ obj-$(CONFIG_PRISM2_USB)	+= wlan-ng/
 obj-$(CONFIG_ECHO)		+= echo/
 obj-$(CONFIG_POCH)		+= poch/
 obj-$(CONFIG_OTUS)		+= otus/
+obj-$(CONFIG_BRCM80211)	+= brcm80211/
 obj-$(CONFIG_RT2860)		+= rt2860/
 obj-$(CONFIG_RT2870)		+= rt2870/
 obj-$(CONFIG_COMEDI)		+= comedi/
