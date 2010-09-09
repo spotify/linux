@@ -242,8 +242,6 @@ struct sock {
 	struct {
 		struct sk_buff *head;
 		struct sk_buff *tail;
-		int len;
-		int limit;
 	} sk_backlog;
 	wait_queue_head_t	*sk_sleep;
 	struct dst_entry	*sk_dst_cache;
@@ -303,6 +301,10 @@ struct sock {
   	int			(*sk_backlog_rcv)(struct sock *sk,
 						  struct sk_buff *skb);  
 	void                    (*sk_destruct)(struct sock *sk);
+#ifndef __GENKSYMS__
+	int			sk_backlog_len;
+	int			sk_backlog_limit;
+#endif
 };
 
 /*
@@ -578,11 +580,11 @@ static inline void sk_add_backlog(struct sock *sk, struct sk_buff *skb)
 /* The per-socket spinlock must be held here. */
 static inline int sk_add_backlog_limited(struct sock *sk, struct sk_buff *skb)
 {
-	if (sk->sk_backlog.len >= max(sk->sk_backlog.limit, sk->sk_rcvbuf << 1))
+	if (sk->sk_backlog_len >= max(sk->sk_backlog_limit, sk->sk_rcvbuf << 1))
 		return -ENOBUFS;
 
 	sk_add_backlog(sk, skb);
-	sk->sk_backlog.len += skb->truesize;
+	sk->sk_backlog_len += skb->truesize;
 	return 0;
 }
 

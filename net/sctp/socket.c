@@ -3720,7 +3720,7 @@ SCTP_STATIC int sctp_init_sock(struct sock *sk)
 	percpu_counter_inc(&sctp_sockets_allocated);
 
 	/* Set socket backlog limit. */
-	sk->sk_backlog.limit = sysctl_sctp_rmem[1];
+	sk->sk_backlog_limit = sysctl_sctp_rmem[1];
 
 	local_bh_disable();
 	sock_prot_inuse_add(sock_net(sk), sk->sk_prot, 1);
