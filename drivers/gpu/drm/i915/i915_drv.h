@@ -1067,7 +1067,8 @@ extern int i915_wait_ring(struct drm_device * dev, int n, const char *caller);
 			 (dev)->pci_device == 0x2E22 ||		\
 			 (dev)->pci_device == 0x2E32 ||		\
 			 (dev)->pci_device == 0x2A42 ||		\
-			 (dev)->pci_device == 0x2E42)
+			 (dev)->pci_device == 0x2E42 ||		\
+			 (dev)->pci_device == 0x2E92)
 
 #define I915_NEED_GFX_HWS(dev)	(INTEL_INFO(dev)->need_gfx_hws)
 

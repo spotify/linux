@@ -49,6 +49,8 @@
 #define PCI_DEVICE_ID_INTEL_Q33_IG          0x29D2
 #define PCI_DEVICE_ID_INTEL_B43_HB          0x2E40
 #define PCI_DEVICE_ID_INTEL_B43_IG          0x2E42
+#define PCI_DEVICE_ID_INTEL_B43_1_HB        0x2E90
+#define PCI_DEVICE_ID_INTEL_B43_1_IG        0x2E92
 #define PCI_DEVICE_ID_INTEL_GM45_HB         0x2A40
 #define PCI_DEVICE_ID_INTEL_GM45_IG         0x2A42
 #define PCI_DEVICE_ID_INTEL_IGD_E_HB        0x2E00
@@ -96,6 +98,7 @@
 		agp_bridge->dev->device == PCI_DEVICE_ID_INTEL_GM45_HB || \
 		agp_bridge->dev->device == PCI_DEVICE_ID_INTEL_G41_HB || \
 		agp_bridge->dev->device == PCI_DEVICE_ID_INTEL_B43_HB || \
+		agp_bridge->dev->device == PCI_DEVICE_ID_INTEL_B43_1_HB || \
 		agp_bridge->dev->device == PCI_DEVICE_ID_INTEL_IGDNG_D_HB || \
 		agp_bridge->dev->device == PCI_DEVICE_ID_INTEL_IGDNG_M_HB || \
 		agp_bridge->dev->device == PCI_DEVICE_ID_INTEL_IGDNG_MA_HB || \
@@ -1353,6 +1356,7 @@ static void intel_i965_get_gtt_range(int *gtt_offset, int *gtt_size)
 	case PCI_DEVICE_ID_INTEL_G45_HB:
 	case PCI_DEVICE_ID_INTEL_G41_HB:
 	case PCI_DEVICE_ID_INTEL_B43_HB:
+	case PCI_DEVICE_ID_INTEL_B43_1_HB:
 	case PCI_DEVICE_ID_INTEL_IGDNG_D_HB:
 	case PCI_DEVICE_ID_INTEL_IGDNG_M_HB:
 	case PCI_DEVICE_ID_INTEL_IGDNG_MA_HB:
@@ -2352,6 +2356,8 @@ static const struct intel_driver_description {
 	    "G45/G43", NULL, &intel_i965_driver },
 	{ PCI_DEVICE_ID_INTEL_B43_HB, PCI_DEVICE_ID_INTEL_B43_IG, 0,
 	    "B43", NULL, &intel_i965_driver },
+	{ PCI_DEVICE_ID_INTEL_B43_1_HB, PCI_DEVICE_ID_INTEL_B43_1_IG, 0,
+	    "B43", NULL, &intel_i965_driver },
 	{ PCI_DEVICE_ID_INTEL_G41_HB, PCI_DEVICE_ID_INTEL_G41_IG, 0,
 	    "G41", NULL, &intel_i965_driver },
 	{ PCI_DEVICE_ID_INTEL_IGDNG_D_HB, PCI_DEVICE_ID_INTEL_IGDNG_D_IG, 0,
@@ -2560,6 +2566,7 @@ static struct pci_device_id agp_intel_pci_table[] = {
 	ID(PCI_DEVICE_ID_INTEL_G45_HB),
 	ID(PCI_DEVICE_ID_INTEL_G41_HB),
 	ID(PCI_DEVICE_ID_INTEL_B43_HB),
+	ID(PCI_DEVICE_ID_INTEL_B43_1_HB),
 	ID(PCI_DEVICE_ID_INTEL_IGDNG_D_HB),
 	ID(PCI_DEVICE_ID_INTEL_IGDNG_M_HB),
 	ID(PCI_DEVICE_ID_INTEL_IGDNG_MA_HB),
