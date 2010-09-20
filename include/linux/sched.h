@@ -1071,6 +1071,7 @@ struct sched_domain;
 #define WF_SYNC		0x01		/* waker goes to sleep after wakup */
 #define WF_FORK		0x02		/* child wakeup after fork */
 
+#ifndef __GENKSYMS__
 struct sched_class {
 	const struct sched_class *next;
 
@@ -1126,6 +1127,46 @@ struct sched_class {
 	void (*moved_group) (struct task_struct *p, int on_rq);
 #endif
 };
+#else /* __GENKSYMS__ */
+/*
+ * struct sched_class is private to the scheduler, but since it is
+ * defined here it affects the symbol version of many exported symbols.
+ * This is a fake definition purely to keep symbol versions stable.
+ */
+struct sched_class {
+	const struct sched_class *next;
+	void (*enqueue_task) (struct rq *, struct task_struct *, int);
+	void (*dequeue_task) (struct rq *, struct task_struct *, int);
+	void (*yield_task) (struct rq *);
+	void (*check_preempt_curr) (struct rq *, struct task_struct *, int);
+	struct task_struct * (*pick_next_task) (struct rq *);
+	void (*put_prev_task) (struct rq *, struct task_struct *);
+#ifdef CONFIG_SMP
+	int  (*select_task_rq)(struct task_struct *, int, int);
+	unsigned long (*load_balance) (struct rq *, int, struct rq *,
+				       unsigned long, struct sched_domain *,
+				       enum cpu_idle_type, int *, int *);
+	int (*move_one_task) (struct rq *, int, struct rq *,
+			      struct sched_domain *, enum cpu_idle_type);
+	void (*pre_schedule) (struct rq *, struct task_struct *);
+	void (*post_schedule) (struct rq *);
+	void (*task_wake_up) (struct rq *, struct task_struct *);
+	void (*set_cpus_allowed)(struct task_struct *, const struct cpumask *);
+	void (*rq_online)(struct rq *);
+	void (*rq_offline)(struct rq *);
+#endif
+	void (*set_curr_task) (struct rq *);
+	void (*task_tick) (struct rq *, struct task_struct *, int);
+	void (*task_new) (struct rq *, struct task_struct *);
+	void (*switched_from) (struct rq *, struct task_struct *, int);
+	void (*switched_to) (struct rq *, struct task_struct *, int);
+	void (*prio_changed) (struct rq *, struct task_struct *, int, int);
+	unsigned int (*get_rr_interval) (struct task_struct *);
+#ifdef CONFIG_FAIR_GROUP_SCHED
+	void (*moved_group) (struct task_struct *);
+#endif
+};
+#endif /* __GENKSYMS__ */
 
 struct load_weight {
 	unsigned long weight, inv_weight;
