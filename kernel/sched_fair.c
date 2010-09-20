@@ -1516,7 +1516,9 @@ select_task_rq_fair(struct rq *rq, struct task_struct *p, int sd_flag, int wake_
 		 * Pick the largest domain to update shares over
 		 */
 		tmp = sd;
-		if (affine_sd && (!tmp || affine_sd->span_weight > sd->span_weight))
+		if (affine_sd && (!tmp ||
+				  cpumask_weight(sched_domain_span(affine_sd)) >
+				  cpumask_weight(sched_domain_span(sd))))
 			tmp = affine_sd;
 
 		if (tmp) {
@@ -1562,10 +1564,10 @@ select_task_rq_fair(struct rq *rq, struct task_struct *p, int sd_flag, int wake_
 
 		/* Now try balancing at a lower domain level of new_cpu */
 		cpu = new_cpu;
-		weight = sd->span_weight;
+		weight = cpumask_weight(sched_domain_span(sd));
 		sd = NULL;
 		for_each_domain(cpu, tmp) {
-			if (weight <= tmp->span_weight)
+			if (weight <= cpumask_weight(sched_domain_span(tmp)))
 				break;
 			if (tmp->flags & sd_flag)
 				sd = tmp;
