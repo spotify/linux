@@ -290,13 +290,6 @@ struct zone {
 	unsigned long watermark[NR_WMARK];
 
 	/*
-	 * When free pages are below this point, additional steps are taken
-	 * when reading the number of free pages to avoid per-cpu counter
-	 * drift allowing watermarks to be breached
-	 */
-	unsigned long percpu_drift_mark;
-
-	/*
 	 * We don't know if the memory that we're going to allocate will be freeable
 	 * or/and it will be released eventually, so to avoid totally wasting several
 	 * GB of ram we must reserve some of the lower zone memory (otherwise we risk
@@ -429,6 +422,15 @@ struct zone {
 	 * rarely used fields:
 	 */
 	const char		*name;
+
+#ifndef __GENKSYMS__
+	/*
+	 * When free pages are below this point, additional steps are taken
+	 * when reading the number of free pages to avoid per-cpu counter
+	 * drift allowing watermarks to be breached
+	 */
+	unsigned long percpu_drift_mark;
+#endif
 } ____cacheline_internodealigned_in_smp;
 
 typedef enum {
