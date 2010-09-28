@@ -1319,8 +1319,8 @@ EXPORT_SYMBOL(mmc_resume_host);
 int mmc_pm_notify(struct notifier_block *notify_block,
 					unsigned long mode, void *unused)
 {
-	struct mmc_host *host = container_of(
-		notify_block, struct mmc_host, pm_notify);
+	struct mmc_host *host = &container_of(
+		notify_block, struct mmc_host_plus, pm_notify)->host;
 	unsigned long flags;
 
 
