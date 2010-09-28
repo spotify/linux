@@ -16,7 +16,9 @@
 #include <linux/idr.h>
 #include <linux/pagemap.h>
 #include <linux/leds.h>
+#ifndef __GENKSYMS__
 #include <linux/suspend.h>
+#endif
 
 #include <linux/mmc/host.h>
 
@@ -28,7 +30,7 @@
 static void mmc_host_classdev_release(struct device *dev)
 {
 	struct mmc_host *host = cls_dev_to_mmc_host(dev);
-	kfree(host);
+	kfree(container_of(host, struct mmc_host_plus, host));
 }
 
 static struct class mmc_host_class = {
@@ -60,13 +62,15 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 {
 	int err;
 	struct mmc_host *host;
+	struct mmc_host_plus *host_plus;
 
 	if (!idr_pre_get(&mmc_host_idr, GFP_KERNEL))
 		return NULL;
 
-	host = kzalloc(sizeof(struct mmc_host) + extra, GFP_KERNEL);
-	if (!host)
+	host_plus = kzalloc(sizeof(struct mmc_host_plus) + extra, GFP_KERNEL);
+	if (!host_plus)
 		return NULL;
+	host = &host_plus->host;
 
 	spin_lock(&mmc_host_lock);
 	err = idr_get_new(&mmc_host_idr, host, &host->index);
@@ -86,7 +90,7 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	INIT_DELAYED_WORK(&host->detect, mmc_rescan);
 	INIT_DELAYED_WORK_DEFERRABLE(&host->disable, mmc_host_deeper_disable);
 #ifdef CONFIG_PM
-	host->pm_notify.notifier_call = mmc_pm_notify;
+	host_plus->pm_notify.notifier_call = mmc_pm_notify;
 #endif
 
 	/*
@@ -104,7 +108,7 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	return host;
 
 free:
-	kfree(host);
+	kfree(host_plus);
 	return NULL;
 }
 
@@ -136,7 +140,7 @@ int mmc_add_host(struct mmc_host *host)
 #endif
 
 	mmc_start_host(host);
-	register_pm_notifier(&host->pm_notify);
+	register_pm_notifier(&container_of(host, struct mmc_host_plus, host)->pm_notify);
 
 	return 0;
 }
@@ -153,7 +157,7 @@ EXPORT_SYMBOL(mmc_add_host);
  */
 void mmc_remove_host(struct mmc_host *host)
 {
-	unregister_pm_notifier(&host->pm_notify);
+	unregister_pm_notifier(&container_of(host, struct mmc_host_plus, host)->pm_notify);
 	mmc_stop_host(host);
 
 #ifdef CONFIG_DEBUG_FS
