@@ -41,7 +41,6 @@
 #include <linux/mii.h>
 #include <linux/ethtool.h>
 #include <linux/if_vlan.h>
-#include <linux/pm_qos_params.h>
 
 #include "igbvf.h"
 
@@ -2903,8 +2902,6 @@ static int __init igbvf_init_module(void)
 	printk(KERN_INFO "%s\n", igbvf_copyright);
 
 	ret = pci_register_driver(&igbvf_driver);
-	pm_qos_add_requirement(PM_QOS_CPU_DMA_LATENCY, igbvf_driver_name,
-	                       PM_QOS_DEFAULT_VALUE);
 
 	return ret;
 }
@@ -2919,7 +2916,6 @@ module_init(igbvf_init_module);
 static void __exit igbvf_exit_module(void)
 {
 	pci_unregister_driver(&igbvf_driver);
-	pm_qos_remove_requirement(PM_QOS_CPU_DMA_LATENCY, igbvf_driver_name);
 }
 module_exit(igbvf_exit_module);
 
