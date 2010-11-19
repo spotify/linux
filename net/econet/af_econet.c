@@ -1171,4 +1171,4 @@ module_init(econet_proto_init);
 module_exit(econet_proto_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_ALIAS_NETPROTO(PF_ECONET);
+/* MODULE_ALIAS_NETPROTO(PF_ECONET); */
