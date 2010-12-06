@@ -82,20 +82,31 @@ char *GetBW(int BW)
 */
 int RT_CfgSetCountryRegion(struct rt_rtmp_adapter *pAd, char *arg, int band)
 {
-	long region, regionMax;
+	long region;
 	u8 *pCountryRegion;
 
-	region = simple_strtol(arg, 0, 10);
+	/* Match cfg80211 static regdom names */
+	if (!strcmp(arg, "00"))
+		region = (band == BAND_24G) ? 0 : 10;
+	else if (!strcmp(arg, "US"))
+		region = 0;
+	else if (!strcmp(arg, "JP"))
+		region = (band == BAND_24G) ? 5 : 2;
+	else if (!strcmp(arg, "EU"))
+		region = 1;
+	else {
+		DBGPRINT(RT_DEBUG_ERROR,
+			 ("CfgSetCountryRegion(): region %s is invalid\n",
+			  arg));
+		return FALSE;
+	}
 
 	if (band == BAND_24G) {
 		pCountryRegion = &pAd->CommonCfg.CountryRegion;
-		regionMax = REGION_MAXIMUM_BG_BAND;
 	} else {
 		pCountryRegion = &pAd->CommonCfg.CountryRegionForABand;
-		regionMax = REGION_MAXIMUM_A_BAND;
 	}
 
-	/* TODO: Is it neccesay for following check??? */
 	/* Country can be set only when EEPROM not programmed */
 	if (*pCountryRegion & 0x80) {
 		DBGPRINT(RT_DEBUG_ERROR,
@@ -103,16 +114,7 @@ int RT_CfgSetCountryRegion(struct rt_rtmp_adapter *pAd, char *arg, int band)
 		return FALSE;
 	}
 
-	if ((region >= 0) && (region <= REGION_MAXIMUM_BG_BAND)) {
-		*pCountryRegion = (u8)region;
-	} else if ((region == REGION_31_BG_BAND) && (band == BAND_24G)) {
-		*pCountryRegion = (u8)region;
-	} else {
-		DBGPRINT(RT_DEBUG_ERROR,
-			 ("CfgSetCountryRegion():region(%ld) out of range!\n",
-			  region));
-		return FALSE;
-	}
+	*pCountryRegion = (u8)region;
 
 	return TRUE;
 

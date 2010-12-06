@@ -3198,6 +3198,11 @@ void CfgInitHook(struct rt_rtmp_adapter *pAd)
 	pAd->bBroadComHT = TRUE;
 }
 
+static char *ieee80211_regdom = "00";
+
+module_param(ieee80211_regdom, charp, 0444);
+MODULE_PARM_DESC(ieee80211_regdom, "IEEE 802.11 regulatory domain code");
+
 int rt28xx_init(struct rt_rtmp_adapter *pAd,
 		char *pDefaultMac, char *pHostName)
 {
@@ -3372,6 +3377,10 @@ int rt28xx_init(struct rt_rtmp_adapter *pAd,
 
 	/* We should read EEPROM for all cases.  rt2860b */
 	NICReadEEPROMParameters(pAd, (u8 *)pDefaultMac);
+
+	/* Set country/region if not already programmed */
+	RT_CfgSetCountryRegion(pAd, ieee80211_regdom, BAND_24G);
+	RT_CfgSetCountryRegion(pAd, ieee80211_regdom, BAND_5G);
 
 	DBGPRINT(RT_DEBUG_OFF, ("3. Phy Mode = %d\n", pAd->CommonCfg.PhyMode));
 
