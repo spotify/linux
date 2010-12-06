@@ -153,6 +153,8 @@ static unsigned int qnap_ts219_mpp_config[] __initdata = {
 	MPP15_GPIO,		/* USB Copy button */
 	MPP16_GPIO,		/* Reset button */
 	MPP36_GPIO,		/* RAM: 0: 256 MB, 1: 512 MB */
+	MPP37_GPIO,		/* Reset button (on devices with 88F6282) */
+	MPP43_GPIO,		/* USB Copy button (on devices with 88F6282) */
 	MPP44_GPIO,		/* Board ID: 0: TS-11x, 1: TS-21x */
 	0
 };
@@ -186,6 +188,8 @@ void qnap_ts219_power_off(void)
 
 static void __init qnap_ts219_init(void)
 {
+	u32 dev, rev;
+
 	/*
 	 * Basic setup. Needs to be called early.
 	 */
@@ -199,7 +203,15 @@ static void __init qnap_ts219_init(void)
 	kirkwood_spi_init();
 	kirkwood_i2c_init();
 	i2c_register_board_info(0, &qnap_ts219_i2c_rtc, 1);
+
+	kirkwood_pcie_id(&dev, &rev);
+	if (dev == MV88F6282_DEV_ID) {
+		qnap_ts219_buttons[0].gpio = 43; /* USB Copy button */
+		qnap_ts219_buttons[1].gpio = 37; /* Reset button */
+		qnap_ts219_ge00_data.phy_addr = MV643XX_ETH_PHY_ADDR(0);
+	}
 	kirkwood_ge00_init(&qnap_ts219_ge00_data);
+
 	kirkwood_sata_init(&qnap_ts219_sata_data);
 	kirkwood_ehci_init();
 	platform_device_register(&qnap_ts219_button_device);
