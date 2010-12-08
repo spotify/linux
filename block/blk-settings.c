@@ -342,6 +342,14 @@ void blk_queue_logical_block_size(struct request_queue *q, unsigned short size)
 }
 EXPORT_SYMBOL(blk_queue_logical_block_size);
 
+#undef blk_queue_physical_block_size
+
+void blk_queue_physical_block_size(struct request_queue *q, unsigned short size)
+{
+	blk_queue_physical_block_size_fixed(q, size);
+}
+EXPORT_SYMBOL(blk_queue_physical_block_size);
+
 /**
  * blk_queue_physical_block_size - set physical block size for the queue
  * @q:  the request queue for the device
@@ -352,7 +360,7 @@ EXPORT_SYMBOL(blk_queue_logical_block_size);
  *   hardware can operate on without reverting to read-modify-write
  *   operations.
  */
-void blk_queue_physical_block_size(struct request_queue *q, unsigned int size)
+void blk_queue_physical_block_size_fixed(struct request_queue *q, unsigned int size)
 {
 	q->limits.physical_block_size = size;
 
@@ -362,7 +370,7 @@ void blk_queue_physical_block_size(struct request_queue *q, unsigned int size)
 	if (q->limits.io_min < q->limits.physical_block_size)
 		q->limits.io_min = q->limits.physical_block_size;
 }
-EXPORT_SYMBOL(blk_queue_physical_block_size);
+EXPORT_SYMBOL(blk_queue_physical_block_size_fixed);
 
 /**
  * blk_queue_alignment_offset - set physical block alignment offset
