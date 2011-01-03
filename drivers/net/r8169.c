@@ -3324,12 +3324,17 @@ static void rtl_tx_performance_tweak(struct pci_dev *pdev, u16 force)
 	}
 }
 
-static void rtl_csi_access_enable(void __iomem *ioaddr)
+static void rtl_csi_access_enable(void __iomem *ioaddr, u32 bits)
 {
 	u32 csi;
 
 	csi = rtl_csi_read(ioaddr, 0x070c) & 0x00ffffff;
-	rtl_csi_write(ioaddr, 0x070c, csi | 0x27000000);
+	rtl_csi_write(ioaddr, 0x070c, csi | bits);
+}
+
+static void rtl_csi_access_enable_2(void __iomem *ioaddr)
+{
+	rtl_csi_access_enable(ioaddr, 0x27000000);
 }
 
 struct ephy_info {
@@ -3417,7 +3422,7 @@ static void rtl_hw_start_8168cp_1(void __iomem *ioaddr, struct pci_dev *pdev)
 		{ 0x07, 0,	0x2000 }
 	};
 
-	rtl_csi_access_enable(ioaddr);
+	rtl_csi_access_enable_2(ioaddr);
 
 	rtl_ephy_init(ioaddr, e_info_8168cp, ARRAY_SIZE(e_info_8168cp));
 
@@ -3426,7 +3431,7 @@ static void rtl_hw_start_8168cp_1(void __iomem *ioaddr, struct pci_dev *pdev)
 
 static void rtl_hw_start_8168cp_2(void __iomem *ioaddr, struct pci_dev *pdev)
 {
-	rtl_csi_access_enable(ioaddr);
+	rtl_csi_access_enable_2(ioaddr);
 
 	RTL_W8(Config3, RTL_R8(Config3) & ~Beacon_en);
 
@@ -3437,7 +3442,7 @@ static void rtl_hw_start_8168cp_2(void __iomem *ioaddr, struct pci_dev *pdev)
 
 static void rtl_hw_start_8168cp_3(void __iomem *ioaddr, struct pci_dev *pdev)
 {
-	rtl_csi_access_enable(ioaddr);
+	rtl_csi_access_enable_2(ioaddr);
 
 	RTL_W8(Config3, RTL_R8(Config3) & ~Beacon_en);
 
@@ -3459,7 +3464,7 @@ static void rtl_hw_start_8168c_1(void __iomem *ioaddr, struct pci_dev *pdev)
 		{ 0x06, 0x0080,	0x0000 }
 	};
 
-	rtl_csi_access_enable(ioaddr);
+	rtl_csi_access_enable_2(ioaddr);
 
 	RTL_W8(DBG_REG, 0x06 | FIX_NAK_1 | FIX_NAK_2);
 
@@ -3475,7 +3480,7 @@ static void rtl_hw_start_8168c_2(void __iomem *ioaddr, struct pci_dev *pdev)
 		{ 0x03, 0x0400,	0x0220 }
 	};
 
-	rtl_csi_access_enable(ioaddr);
+	rtl_csi_access_enable_2(ioaddr);
 
 	rtl_ephy_init(ioaddr, e_info_8168c_2, ARRAY_SIZE(e_info_8168c_2));
 
@@ -3489,14 +3494,14 @@ static void rtl_hw_start_8168c_3(void __iomem *ioaddr, struct pci_dev *pdev)
 
 static void rtl_hw_start_8168c_4(void __iomem *ioaddr, struct pci_dev *pdev)
 {
-	rtl_csi_access_enable(ioaddr);
+	rtl_csi_access_enable_2(ioaddr);
 
 	__rtl_hw_start_8168cp(ioaddr, pdev);
 }
 
 static void rtl_hw_start_8168d(void __iomem *ioaddr, struct pci_dev *pdev)
 {
-	rtl_csi_access_enable(ioaddr);
+	rtl_csi_access_enable_2(ioaddr);
 
 	rtl_disable_clock_request(pdev);
 
@@ -3626,7 +3631,7 @@ static void rtl_hw_start_8102e_1(void __iomem *ioaddr, struct pci_dev *pdev)
 	};
 	u8 cfg1;
 
-	rtl_csi_access_enable(ioaddr);
+	rtl_csi_access_enable_2(ioaddr);
 
 	RTL_W8(DBG_REG, FIX_NAK_1);
 
@@ -3647,7 +3652,7 @@ static void rtl_hw_start_8102e_1(void __iomem *ioaddr, struct pci_dev *pdev)
 
 static void rtl_hw_start_8102e_2(void __iomem *ioaddr, struct pci_dev *pdev)
 {
-	rtl_csi_access_enable(ioaddr);
+	rtl_csi_access_enable_2(ioaddr);
 
 	rtl_tx_performance_tweak(pdev, 0x5 << MAX_READ_REQUEST_SHIFT);
 
