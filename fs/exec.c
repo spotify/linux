@@ -159,15 +159,14 @@ out:
 
 #ifdef CONFIG_MMU
 
-void acct_arg_size(struct linux_binprm *bprm, unsigned long pages)
+static void acct_arg_size(struct linux_binprm *bprm, unsigned long pages,
+			  unsigned long old_pages)
 {
 	struct mm_struct *mm = current->mm;
-	long diff = (long)(pages - bprm->vma_pages);
+	long diff = (long)(pages - old_pages);
 
 	if (!mm || !diff)
 		return;
-
-	bprm->vma_pages = pages;
 
 	down_write(&mm->mmap_sem);
 	mm->total_vm += diff;
@@ -177,6 +176,8 @@ void acct_arg_size(struct linux_binprm *bprm, unsigned long pages)
 struct page *get_arg_page(struct linux_binprm *bprm, unsigned long pos,
 		int write)
 {
+	unsigned long old_vma_pages =
+		(bprm->vma->vm_end - bprm->vma->vm_start) / PAGE_SIZE;
 	struct page *page;
 	int ret;
 
@@ -196,7 +197,7 @@ struct page *get_arg_page(struct linux_binprm *bprm, unsigned long pos,
 		unsigned long size = bprm->vma->vm_end - bprm->vma->vm_start;
 		struct rlimit *rlim;
 
-		acct_arg_size(bprm, size / PAGE_SIZE);
+		acct_arg_size(bprm, size / PAGE_SIZE, old_vma_pages);
 
 		/*
 		 * We've historically supported up to 32 pages (ARG_MAX)
@@ -286,7 +287,8 @@ static bool valid_arg_len(struct linux_binprm *bprm, long len)
 
 #else
 
-void acct_arg_size(struct linux_binprm *bprm, unsigned long pages)
+static void acct_arg_size(struct linux_binprm *bprm, unsigned long pages,
+			  unsigned long old_pages)
 {
 }
 
@@ -997,7 +999,6 @@ int flush_old_exec(struct linux_binprm * bprm)
 	/*
 	 * Release all of the old mmap stuff
 	 */
-	acct_arg_size(bprm, 0);
 	retval = exec_mmap(bprm->mm);
 	if (retval)
 		goto out;
@@ -1426,7 +1427,6 @@ int do_execve(char * filename,
 
 out:
 	if (bprm->mm) {
-		acct_arg_size(bprm, 0);
 		mmput(bprm->mm);
 	}
 
