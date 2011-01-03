@@ -2180,6 +2180,7 @@ config YELLOWFIN
 config R8169
 	tristate "Realtek 8169 gigabit ethernet support"
 	depends on PCI
+	select FW_LOADER
 	select CRC32
 	select MII
 	---help---
