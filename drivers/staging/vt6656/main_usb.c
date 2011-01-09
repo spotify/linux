@@ -1315,6 +1315,9 @@ static void vntwusb_disconnect(struct usb_interface *intf)
 //2008-0714-01<Add>by MikeLiu
 device_release_WPADEV(pDevice);
 
+	if (pDevice->firmware)
+		release_firmware(pDevice->firmware);
+
 	usb_set_intfdata(intf, NULL);
 //2008-0922-01<Add>by MikeLiu, decrease usb counter.
      usb_put_dev(interface_to_usbdev(intf));
