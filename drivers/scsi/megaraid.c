@@ -46,7 +46,8 @@
 #include <linux/pci.h>
 #include <linux/init.h>
 #include <linux/dma-mapping.h>
-#include <linux/smp_lock.h>
+#include <linux/mutex.h>
+#include <linux/slab.h>
 #include <scsi/scsicam.h>
 
 #include "scsi.h"
@@ -61,6 +62,7 @@ MODULE_DESCRIPTION ("LSI Logic MegaRAID legacy driver");
 MODULE_LICENSE ("GPL");
 MODULE_VERSION(MEGARAID_MODULE_VERSION);
 
+static DEFINE_MUTEX(megadev_mutex);
 static unsigned int max_cmd_per_lun = DEF_CMD_PER_LUN;
 module_param(max_cmd_per_lun, uint, 0);
 MODULE_PARM_DESC(max_cmd_per_lun, "Maximum number of commands which can be issued to a single LUN (default=DEF_CMD_PER_LUN=63)");
@@ -90,12 +92,15 @@ static struct proc_dir_entry *mega_proc_dir_entry;
 /* For controller re-ordering */
 static struct mega_hbas mega_hbas[MAX_CONTROLLERS];
 
+static long
+megadev_unlocked_ioctl(struct file *filep, unsigned int cmd, unsigned long arg);
+
 /*
  * The File Operations structure for the serial/ioctl interface of the driver
  */
 static const struct file_operations megadev_fops = {
 	.owner		= THIS_MODULE,
-	.ioctl		= megadev_ioctl,
+	.unlocked_ioctl	= megadev_unlocked_ioctl,
 	.open		= megadev_open,
 };
 
@@ -3278,7 +3283,6 @@ mega_init_scb(adapter_t *adapter)
 static int
 megadev_open (struct inode *inode, struct file *filep)
 {
-	cycle_kernel_lock();
 	/*
 	 * Only allow superuser to access private ioctl interface
 	 */
@@ -3301,8 +3305,7 @@ megadev_open (struct inode *inode, struct file *filep)
  * controller.
  */
 static int
-megadev_ioctl(struct inode *inode, struct file *filep, unsigned int cmd,
-		unsigned long arg)
+megadev_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 {
 	adapter_t	*adapter;
 	nitioctl_t	uioc;
@@ -3691,6 +3694,18 @@ freemem_and_return:
 	}
 
 	return 0;
+}
+
+static long
+megadev_unlocked_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
+{
+	int ret;
+
+	mutex_lock(&megadev_mutex);
+	ret = megadev_ioctl(filep, cmd, arg);
+	mutex_unlock(&megadev_mutex);
+
+	return ret;
 }
 
 /**
