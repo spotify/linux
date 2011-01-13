@@ -514,6 +514,8 @@ struct rtl8169_private {
 
 	struct mii_if_info mii;
 	struct rtl8169_counters counters;
+
+	const struct firmware *fw;
 };
 
 MODULE_AUTHOR("Realtek and the Linux r8169 crew <netdev@vger.kernel.org>");
@@ -1444,6 +1446,29 @@ rtl_phy_write_fw(struct rtl8169_private *tp, const struct firmware *fw)
 	}
 }
 
+static void rtl_release_firmware(struct rtl8169_private *tp)
+{
+	release_firmware(tp->fw);
+	tp->fw = NULL;
+}
+
+static int rtl_apply_firmware(struct rtl8169_private *tp, const char *fw_name)
+{
+	const struct firmware **fw = &tp->fw;
+	int rc = !*fw;
+
+	if (rc) {
+		rc = request_firmware(fw, fw_name, &tp->pci_dev->dev);
+		if (rc < 0)
+			goto out;
+	}
+
+	/* TODO: release firmware once rtl_phy_write_fw signals failures. */
+	rtl_phy_write_fw(tp, *fw);
+out:
+	return rc;
+}
+
 static void rtl8169s_hw_phy_config(void __iomem *ioaddr)
 {
 	struct phy_reg phy_reg_init[] = {
@@ -1819,7 +1844,6 @@ static void rtl8168d_1_hw_phy_config(struct rtl8169_private *tp)
 		{ 0x0d, 0xf880 }
 	};
 	void __iomem *ioaddr = tp->mmio_addr;
-	const struct firmware *fw;
 
 	rtl_phy_write(ioaddr, phy_reg_init_0, ARRAY_SIZE(phy_reg_init_0));
 
@@ -1883,11 +1907,8 @@ static void rtl8168d_1_hw_phy_config(struct rtl8169_private *tp)
 
 	mdio_write(ioaddr, 0x1f, 0x0005);
 	mdio_write(ioaddr, 0x05, 0x001b);
-	if (mdio_read(ioaddr, 0x06) == 0xbf00 &&
-	    request_firmware(&fw, FIRMWARE_8168D_1, &tp->pci_dev->dev) == 0) {
-		rtl_phy_write_fw(tp, fw);
-		release_firmware(fw);
-	} else {
+	if ((mdio_read(tp, 0x06) != 0xbf00) ||
+	    (rtl_apply_firmware(tp, FIRMWARE_8168D_1) < 0)) {
 		if (netif_msg_probe(tp))
 			printk(KERN_WARNING "%s: unable to apply firmware patch\n",
 			       tp->dev->name);
@@ -1939,7 +1960,6 @@ static void rtl8168d_2_hw_phy_config(struct rtl8169_private *tp)
 		{ 0x0d, 0xf880 }
 	};
 	void __iomem *ioaddr = tp->mmio_addr;
-	const struct firmware *fw;
 
 	rtl_phy_write(ioaddr, phy_reg_init_0, ARRAY_SIZE(phy_reg_init_0));
 
@@ -1994,11 +2014,8 @@ static void rtl8168d_2_hw_phy_config(struct rtl8169_private *tp)
 
 	mdio_write(ioaddr, 0x1f, 0x0005);
 	mdio_write(ioaddr, 0x05, 0x001b);
-	if (mdio_read(ioaddr, 0x06) == 0xb300 &&
-	    request_firmware(&fw, FIRMWARE_8168D_2, &tp->pci_dev->dev) == 0) {
-		rtl_phy_write_fw(tp, fw);
-		release_firmware(fw);
-	} else {
+	if ((mdio_read(tp, 0x06) != 0xb300) ||
+	    (rtl_apply_firmware(tp, FIRMWARE_8168D_2) < 0)) {
 		if (netif_msg_probe(tp))
 			printk(KERN_WARNING "%s: unable to apply firmware patch\n",
 			       tp->dev->name);
@@ -2721,6 +2738,8 @@ static void __devexit rtl8169_remove_one(struct pci_dev *pdev)
 	struct rtl8169_private *tp = netdev_priv(dev);
 
 	flush_scheduled_work();
+
+	rtl_release_firmware(tp);
 
 	unregister_netdev(dev);
 
