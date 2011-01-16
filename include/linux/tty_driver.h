@@ -275,14 +275,16 @@ struct tty_operations {
 			unsigned int set, unsigned int clear);
 	int (*resize)(struct tty_struct *tty, struct winsize *ws);
 	int (*set_termiox)(struct tty_struct *tty, struct termiox *tnew);
-	int (*get_icount)(struct tty_struct *tty,
-				struct serial_icounter_struct *icount);
 #ifdef CONFIG_CONSOLE_POLL
 	int (*poll_init)(struct tty_driver *driver, int line, char *options);
 	int (*poll_get_char)(struct tty_driver *driver, int line);
 	void (*poll_put_char)(struct tty_driver *driver, int line, char ch);
 #endif
 	const struct file_operations *proc_fops;
+#ifndef __GENKSYMS__
+	int (*get_icount)(struct tty_struct *tty,
+				struct serial_icounter_struct *icount);
+#endif
 };
 
 struct tty_driver {
@@ -374,6 +376,9 @@ static inline struct tty_driver *tty_driver_kref_get(struct tty_driver *d)
  *	the requested timeout to the caller instead of using a simple
  *	on/off interface.
  *
+ * TTY_DRIVER_HAS_GET_ICOUNT -- indicates whether ops->get_icount is
+ *	valid (Debian ABI backward-compatibility)
+ *
  */
 #define TTY_DRIVER_INSTALLED		0x0001
 #define TTY_DRIVER_RESET_TERMIOS	0x0002
@@ -381,6 +386,7 @@ static inline struct tty_driver *tty_driver_kref_get(struct tty_driver *d)
 #define TTY_DRIVER_DYNAMIC_DEV		0x0008
 #define TTY_DRIVER_DEVPTS_MEM		0x0010
 #define TTY_DRIVER_HARDWARE_BREAK	0x0020
+#define TTY_DRIVER_HAS_GET_ICOUNT	0x0040
 
 /* tty driver types */
 #define TTY_DRIVER_TYPE_SYSTEM		0x0001

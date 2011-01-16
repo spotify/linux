@@ -709,6 +709,7 @@ static int __init ip2_loadmain(void)
 	ip2_tty_driver->flags                = TTY_DRIVER_REAL_RAW |
 		TTY_DRIVER_DYNAMIC_DEV;
 	tty_set_operations(ip2_tty_driver, &ip2_ops);
+	ip2_tty_driver->flags                |= TTY_DRIVER_HAS_GET_ICOUNT;
 
 	ip2trace(ITRC_NO_PORT, ITRC_INIT, 3, 0);
 
