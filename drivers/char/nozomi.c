@@ -1927,6 +1927,7 @@ static __init int nozomi_init(void)
 	ntty_driver->init_termios.c_ispeed = 115200;
 	ntty_driver->init_termios.c_ospeed = 115200;
 	tty_set_operations(ntty_driver, &tty_ops);
+	ntty_driver->flags |= TTY_DRIVER_HAS_GET_ICOUNT;
 
 	ret = tty_register_driver(ntty_driver);
 	if (ret) {

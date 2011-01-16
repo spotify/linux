@@ -4130,6 +4130,7 @@ static int __init cy_init(void)
 	    B9600 | CS8 | CREAD | HUPCL | CLOCAL;
 	cy_serial_driver->flags = TTY_DRIVER_REAL_RAW | TTY_DRIVER_DYNAMIC_DEV;
 	tty_set_operations(cy_serial_driver, &cy_ops);
+	cy_serial_driver->flags |= TTY_DRIVER_HAS_GET_ICOUNT;
 
 	retval = tty_register_driver(cy_serial_driver);
 	if (retval) {

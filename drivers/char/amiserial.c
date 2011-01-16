@@ -2001,6 +2001,7 @@ static int __init rs_init(void)
 		B9600 | CS8 | CREAD | HUPCL | CLOCAL;
 	serial_driver->flags = TTY_DRIVER_REAL_RAW;
 	tty_set_operations(serial_driver, &serial_ops);
+	serial_driver->flags |= TTY_DRIVER_HAS_GET_ICOUNT;
 
 	error = tty_register_driver(serial_driver);
 	if (error)

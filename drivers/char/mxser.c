@@ -2710,6 +2710,7 @@ static int __init mxser_module_init(void)
 	mxvar_sdriver->init_termios.c_cflag = B9600|CS8|CREAD|HUPCL|CLOCAL;
 	mxvar_sdriver->flags = TTY_DRIVER_REAL_RAW|TTY_DRIVER_DYNAMIC_DEV;
 	tty_set_operations(mxvar_sdriver, &mxser_ops);
+	mxvar_sdriver->flags |= TTY_DRIVER_HAS_GET_ICOUNT;
 
 	retval = tty_register_driver(mxvar_sdriver);
 	if (retval) {
