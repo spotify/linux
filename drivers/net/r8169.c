@@ -3199,6 +3199,8 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	}
 	pm_runtime_idle(&pdev->dev);
 
+	netif_carrier_off(dev);
+
 out:
 	return rc;
 
