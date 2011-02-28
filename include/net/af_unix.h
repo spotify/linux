@@ -57,7 +57,10 @@ struct unix_sock {
         spinlock_t		lock;
 	unsigned int		gc_candidate : 1;
 	unsigned int		gc_maybe_cycle : 1;
-	unsigned char		recursion_level;
+#ifndef __GENKSYSMS__
+	unsigned int		: 6;
+	unsigned int		recursion_level : 8;
+#endif
         wait_queue_head_t       peer_wait;
 };
 #define unix_sk(__sk) ((struct unix_sock *)__sk)

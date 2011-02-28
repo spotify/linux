@@ -1338,8 +1338,9 @@ static int unix_attach_fds(struct scm_cookie *scm, struct sk_buff *skb)
 
 		if (sk) {
 			unix_sock_count++;
-			max_level = max(max_level,
-					unix_sk(sk)->recursion_level);
+			max_level = max_t(unsigned char,
+					  max_level,
+					  unix_sk(sk)->recursion_level);
 		}
 	}
 	if (unlikely(max_level > MAX_RECURSION_LEVEL))
