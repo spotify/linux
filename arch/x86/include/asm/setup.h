@@ -95,10 +95,10 @@ void *extend_brk(size_t size, size_t align);
 			: : "i" (sz));					\
 	}
 
+extern void probe_roms(void);
 #ifdef __i386__
 
 void __init i386_start_kernel(void);
-extern void probe_roms(void);
 
 #else
 void __init x86_64_start_kernel(char *real_mode);
