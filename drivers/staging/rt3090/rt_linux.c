@@ -25,7 +25,6 @@
  *************************************************************************
  */
 
-#include <linux/firmware.h>
 #include <linux/sched.h>
 #include "rt_config.h"
 
@@ -300,7 +299,6 @@ NdisFreeSpinLock(&pAd->McuCmdLock);
 
 	NdisFreeSpinLock(&pAd->irq_lock);
 
-	release_firmware(pAd->firmware);
 
 	vfree(pAd); // pci_free_consistent(os_cookie->pci_dev,sizeof(RTMP_ADAPTER),pAd,os_cookie->pAd_pa);
 	if (os_cookie)
