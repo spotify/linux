@@ -949,6 +949,80 @@ static int piix_sidpr_scr_read(struct ata_link *link,
 	return 0;
 }
 
+static irqreturn_t piix_interrupt(int irq, void *dev_instance)
+{
+	struct ata_host *host = dev_instance;
+	bool retried = false;
+	unsigned int i;
+	unsigned int handled = 0, polling = 0, idle = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&host->lock, flags);
+retry:
+	handled = idle = polling = 0;
+	for (i = 0; i < host->n_ports; i++) {
+		struct ata_port *ap = host->ports[i];
+		struct ata_queued_cmd *qc;
+
+		if (ata_port_is_dummy(ap))
+			continue;
+
+		qc = ata_qc_from_tag(ap, ap->link.active_tag);
+		if (qc) {
+			if (!(qc->tf.flags & ATA_TFLAG_POLLING))
+				handled |= ata_sff_host_intr(ap, qc);
+			else
+				polling |= 1 << i;
+		} else
+			idle |= 1 << i;
+	}
+
+	/*
+	 * If no port was expecting IRQ but the controller is actually
+	 * asserting IRQ line, nobody cared will ensue.  Check IRQ
+	 * pending status if available and clear spurious IRQ.
+	 */
+	if (!handled && !retried) {
+		bool retry = false;
+
+		for (i = 0; i < host->n_ports; i++) {
+			struct ata_port *ap = host->ports[i];
+			u8 host_stat;
+
+			if (polling & (1 << i))
+				continue;
+
+			if (unlikely(!ap->ioaddr.bmdma_addr))
+				continue;
+
+			host_stat = ap->ops->bmdma_status(ap);
+			if (!(host_stat & ATA_DMA_INTR))
+				continue;
+
+			if (idle & (1 << i)) {
+				ap->ops->sff_check_status(ap);
+				ap->ops->sff_irq_clear(ap);
+			} else {
+				/* clear INTRQ and check if BUSY cleared */
+				if (!(ap->ops->sff_check_status(ap) & ATA_BUSY))
+					retry |= true;
+				/*
+				 * With command in flight, we can't do
+				 * sff_irq_clear() w/o racing with completion.
+				 */
+			}
+		}
+		if (retry) {
+			retried = true;
+			goto retry;
+		}
+	}
+
+	spin_unlock_irqrestore(&host->lock, flags);
+
+	return IRQ_RETVAL(handled);
+}
+
 static int piix_sidpr_scr_write(struct ata_link *link,
 				unsigned int reg, u32 val)
 {
@@ -1607,7 +1681,7 @@ static int __devinit piix_init_one(struct pci_dev *pdev,
 	host->flags |= ATA_HOST_PARALLEL_SCAN;
 
 	pci_set_master(pdev);
-	return ata_pci_sff_activate_host(host, ata_sff_interrupt, &piix_sht);
+	return ata_pci_sff_activate_host(host, piix_interrupt, &piix_sht);
 }
 
 static void piix_remove_one(struct pci_dev *pdev)

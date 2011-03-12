@@ -1667,6 +1667,7 @@ unsigned int ata_sff_host_intr(struct ata_port *ap,
 {
 	struct ata_eh_info *ehi = &ap->link.eh_info;
 	u8 status, host_stat = 0;
+	bool bmdma_stopped = false;
 
 	VPRINTK("ata%u: protocol %d task_state %d\n",
 		ap->print_id, qc->tf.protocol, ap->hsm_task_state);
@@ -1699,6 +1700,7 @@ unsigned int ata_sff_host_intr(struct ata_port *ap,
 
 			/* before we do anything else, clear DMA-Start bit */
 			ap->ops->bmdma_stop(qc);
+			bmdma_stopped = true;
 
 			if (unlikely(host_stat & ATA_DMA_ERR)) {
 				/* error when transfering data to/from memory */
@@ -1716,8 +1718,14 @@ unsigned int ata_sff_host_intr(struct ata_port *ap,
 
 	/* check main status, clearing INTRQ if needed */
 	status = ata_sff_irq_status(ap);
-	if (status & ATA_BUSY)
-		goto idle_irq;
+	if (status & ATA_BUSY) {
+		if (bmdma_stopped) {
+			/* BMDMA engine is already stopped, we're screwed */
+			qc->err_mask |= AC_ERR_HSM;
+			ap->hsm_task_state = HSM_ST_ERR;
+		} else
+			goto idle_irq;
+	}
 
 	/* ack bmdma irq events */
 	ap->ops->sff_irq_clear(ap);
