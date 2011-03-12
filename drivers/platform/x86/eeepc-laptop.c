@@ -137,7 +137,6 @@ struct eeepc_hotk {
 	u32 cm_supported;		/* the control methods supported
 					   by this BIOS */
 	bool cpufv_disabled;
-	bool hotplug_disabled;
 	uint init_flag;			/* Init flags */
 	u16 event_count[128];		/* count for each event */
 	struct input_dev *inputdev;
@@ -615,10 +614,6 @@ static void eeepc_dmi_check(void)
 {
 	const char *model;
 
-	model = dmi_get_system_info(DMI_PRODUCT_NAME);
-	if (!model)
-		return;
-
 	/*
 	 * Blacklist for setting cpufv (cpu speed).
 	 *
@@ -638,23 +633,16 @@ static void eeepc_dmi_check(void)
 	 * substring matching.  We don't want to affect the "701SD"
 	 * and "701SDX" models, because they do support S.H.E.
 	 */
+
+	model = dmi_get_system_info(DMI_PRODUCT_NAME);
+	if (!model)
+		return;
+
 	if (strcmp(model, "701") == 0 || strcmp(model, "702") == 0) {
 		ehotk->cpufv_disabled = true;
 		pr_info("model %s does not officially support setting cpu "
 			"speed\n", model);
 		pr_info("cpufv disabled to avoid instability\n");
-	}
-
-	/*
-	 * Blacklist for wlan hotplug
-	 *
-	 * Eeepc 1005HA doesn't work like others models and don't need the
-	 * hotplug code. In fact, current hotplug code seems to unplug another
-	 * device...
-	 */
-	if (strcmp(model, "1005HA") == 0) {
-		ehotk->hotplug_disabled = true;
-		pr_info("wlan hotplug disabled\n");
 	}
 }
 
@@ -1188,9 +1176,6 @@ static int eeepc_rfkill_init(struct device *dev)
 
 	if (result && result != -ENODEV)
 		goto exit;
-
-	if (ehotk->hotplug_disabled)
-		return 0;
 
 	result = eeepc_setup_pci_hotplug();
 	/*
