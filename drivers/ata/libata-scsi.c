@@ -414,12 +414,6 @@ int ata_std_bios_param(struct scsi_device *sdev, struct block_device *bdev,
 	return 0;
 }
 
-/* TODO */
-sector_t ata_scsi_set_capacity(struct scsi_device *sdev, sector_t new_capacity)
-{
-	return 0;
-}
-
 /**
  *	ata_get_identity - Handler for HDIO_GET_IDENTITY ioctl
  *	@ap: target port
