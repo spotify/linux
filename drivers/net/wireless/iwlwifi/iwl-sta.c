@@ -99,25 +99,32 @@ static void iwl_sta_ucode_activate(struct iwl_priv *priv, u8 sta_id)
 
 static void iwl_add_sta_callback(struct iwl_priv *priv,
 				 struct iwl_device_cmd *cmd,
-				 struct iwl_rx_packet *pkt)
+				 struct sk_buff *skb)
 {
+	struct iwl_rx_packet *res = NULL;
 	struct iwl_addsta_cmd *addsta =
 		(struct iwl_addsta_cmd *)cmd->cmd.payload;
 	u8 sta_id = addsta->sta.sta_id;
 
-	if (pkt->hdr.flags & IWL_CMD_FAILED_MSK) {
-		IWL_ERR(priv, "Bad return from REPLY_ADD_STA (0x%08X)\n",
-			  pkt->hdr.flags);
+	if (!skb) {
+		IWL_ERR(priv, "Error: Response NULL in REPLY_ADD_STA.\n");
 		return;
 	}
 
-	switch (pkt->u.add_sta.status) {
+	res = (struct iwl_rx_packet *)skb->data;
+	if (res->hdr.flags & IWL_CMD_FAILED_MSK) {
+		IWL_ERR(priv, "Bad return from REPLY_ADD_STA (0x%08X)\n",
+			  res->hdr.flags);
+		return;
+	}
+
+	switch (res->u.add_sta.status) {
 	case ADD_STA_SUCCESS_MSK:
 		iwl_sta_ucode_activate(priv, sta_id);
 		 /* fall through */
 	default:
 		IWL_DEBUG_HC(priv, "Received REPLY_ADD_STA:(0x%08X)\n",
-			     pkt->u.add_sta.status);
+			     res->u.add_sta.status);
 		break;
 	}
 }
@@ -125,7 +132,7 @@ static void iwl_add_sta_callback(struct iwl_priv *priv,
 int iwl_send_add_sta(struct iwl_priv *priv,
 		     struct iwl_addsta_cmd *sta, u8 flags)
 {
-	struct iwl_rx_packet *pkt = NULL;
+	struct iwl_rx_packet *res = NULL;
 	int ret = 0;
 	u8 data[sizeof(*sta)];
 	struct iwl_host_cmd cmd = {
@@ -145,15 +152,15 @@ int iwl_send_add_sta(struct iwl_priv *priv,
 	if (ret || (flags & CMD_ASYNC))
 		return ret;
 
-	pkt = (struct iwl_rx_packet *)cmd.reply_page;
-	if (pkt->hdr.flags & IWL_CMD_FAILED_MSK) {
+	res = (struct iwl_rx_packet *)cmd.reply_skb->data;
+	if (res->hdr.flags & IWL_CMD_FAILED_MSK) {
 		IWL_ERR(priv, "Bad return from REPLY_ADD_STA (0x%08X)\n",
-			  pkt->hdr.flags);
+			  res->hdr.flags);
 		ret = -EIO;
 	}
 
 	if (ret == 0) {
-		switch (pkt->u.add_sta.status) {
+		switch (res->u.add_sta.status) {
 		case ADD_STA_SUCCESS_MSK:
 			iwl_sta_ucode_activate(priv, sta->sta.sta_id);
 			IWL_DEBUG_INFO(priv, "REPLY_ADD_STA PASSED\n");
@@ -165,8 +172,8 @@ int iwl_send_add_sta(struct iwl_priv *priv,
 		}
 	}
 
-	priv->alloc_rxb_page--;
-	free_pages(cmd.reply_page, priv->hw_params.rx_page_order);
+	priv->alloc_rxb_skb--;
+	dev_kfree_skb_any(cmd.reply_skb);
 
 	return ret;
 }
@@ -317,19 +324,26 @@ static void iwl_sta_ucode_deactivate(struct iwl_priv *priv, const char *addr)
 
 static void iwl_remove_sta_callback(struct iwl_priv *priv,
 				    struct iwl_device_cmd *cmd,
-				    struct iwl_rx_packet *pkt)
+				    struct sk_buff *skb)
 {
+	struct iwl_rx_packet *res = NULL;
 	struct iwl_rem_sta_cmd *rm_sta =
-			(struct iwl_rem_sta_cmd *)cmd->cmd.payload;
+		 (struct iwl_rem_sta_cmd *)cmd->cmd.payload;
 	const char *addr = rm_sta->addr;
 
-	if (pkt->hdr.flags & IWL_CMD_FAILED_MSK) {
-		IWL_ERR(priv, "Bad return from REPLY_REMOVE_STA (0x%08X)\n",
-		pkt->hdr.flags);
+	if (!skb) {
+		IWL_ERR(priv, "Error: Response NULL in REPLY_REMOVE_STA.\n");
 		return;
 	}
 
-	switch (pkt->u.rem_sta.status) {
+	res = (struct iwl_rx_packet *)skb->data;
+	if (res->hdr.flags & IWL_CMD_FAILED_MSK) {
+		IWL_ERR(priv, "Bad return from REPLY_REMOVE_STA (0x%08X)\n",
+		res->hdr.flags);
+		return;
+	}
+
+	switch (res->u.rem_sta.status) {
 	case REM_STA_SUCCESS_MSK:
 		iwl_sta_ucode_deactivate(priv, addr);
 		break;
@@ -342,7 +356,7 @@ static void iwl_remove_sta_callback(struct iwl_priv *priv,
 static int iwl_send_remove_station(struct iwl_priv *priv, const u8 *addr,
 				   u8 flags)
 {
-	struct iwl_rx_packet *pkt;
+	struct iwl_rx_packet *res = NULL;
 	int ret;
 
 	struct iwl_rem_sta_cmd rm_sta_cmd;
@@ -367,15 +381,15 @@ static int iwl_send_remove_station(struct iwl_priv *priv, const u8 *addr,
 	if (ret || (flags & CMD_ASYNC))
 		return ret;
 
-	pkt = (struct iwl_rx_packet *)cmd.reply_page;
-	if (pkt->hdr.flags & IWL_CMD_FAILED_MSK) {
+	res = (struct iwl_rx_packet *)cmd.reply_skb->data;
+	if (res->hdr.flags & IWL_CMD_FAILED_MSK) {
 		IWL_ERR(priv, "Bad return from REPLY_REMOVE_STA (0x%08X)\n",
-			  pkt->hdr.flags);
+			  res->hdr.flags);
 		ret = -EIO;
 	}
 
 	if (!ret) {
-		switch (pkt->u.rem_sta.status) {
+		switch (res->u.rem_sta.status) {
 		case REM_STA_SUCCESS_MSK:
 			iwl_sta_ucode_deactivate(priv, addr);
 			IWL_DEBUG_ASSOC(priv, "REPLY_REMOVE_STA PASSED\n");
@@ -387,8 +401,8 @@ static int iwl_send_remove_station(struct iwl_priv *priv, const u8 *addr,
 		}
 	}
 
-	priv->alloc_rxb_page--;
-	free_pages(cmd.reply_page, priv->hw_params.rx_page_order);
+	priv->alloc_rxb_skb--;
+	dev_kfree_skb_any(cmd.reply_skb);
 
 	return ret;
 }

@@ -200,7 +200,7 @@ int iwl_rx_queue_restock(struct iwl_priv *priv)
 		list_del(element);
 
 		/* Point to Rx buffer via next RBD in circular buffer */
-		rxq->bd[rxq->write] = iwl_dma_addr2rbd_ptr(priv, rxb->page_dma);
+		rxq->bd[rxq->write] = iwl_dma_addr2rbd_ptr(priv, rxb->aligned_dma_addr);
 		rxq->queue[rxq->write] = rxb;
 		rxq->write = (rxq->write + 1) & RX_QUEUE_MASK;
 		rxq->free_count--;
@@ -239,7 +239,7 @@ void iwl_rx_allocate(struct iwl_priv *priv, gfp_t priority)
 	struct iwl_rx_queue *rxq = &priv->rxq;
 	struct list_head *element;
 	struct iwl_rx_mem_buffer *rxb;
-	struct page *page;
+	struct sk_buff *skb;
 	unsigned long flags;
 
 	while (1) {
@@ -252,34 +252,29 @@ void iwl_rx_allocate(struct iwl_priv *priv, gfp_t priority)
 
 		if (rxq->free_count > RX_LOW_WATERMARK)
 			priority |= __GFP_NOWARN;
-
-		if (priv->hw_params.rx_page_order > 0)
-			priority |= __GFP_COMP;
-
 		/* Alloc a new receive buffer */
-		page = alloc_pages(priority, priv->hw_params.rx_page_order);
-		if (!page) {
-			if (net_ratelimit())
-				IWL_DEBUG_INFO(priv, "alloc_pages failed, "
-					       "order: %d\n",
-					       priv->hw_params.rx_page_order);
+		skb = alloc_skb(priv->hw_params.rx_buf_size + 256,
+						priority);
 
+		if (!skb) {
+			if (net_ratelimit())
+				IWL_DEBUG_INFO(priv, "Failed to allocate SKB buffer.\n");
 			if ((rxq->free_count <= RX_LOW_WATERMARK) &&
 			    net_ratelimit())
-				IWL_CRIT(priv, "Failed to alloc_pages with %s. Only %u free buffers remaining.\n",
+				IWL_CRIT(priv, "Failed to allocate SKB buffer with %s. Only %u free buffers remaining.\n",
 					 priority == GFP_ATOMIC ?  "GFP_ATOMIC" : "GFP_KERNEL",
 					 rxq->free_count);
 			/* We don't reschedule replenish work here -- we will
 			 * call the restock method and if it still needs
 			 * more buffers it will schedule replenish */
-			return;
+			break;
 		}
 
 		spin_lock_irqsave(&rxq->lock, flags);
 
 		if (list_empty(&rxq->rx_used)) {
 			spin_unlock_irqrestore(&rxq->lock, flags);
-			__free_pages(page, priv->hw_params.rx_page_order);
+			dev_kfree_skb_any(skb);
 			return;
 		}
 		element = rxq->rx_used.next;
@@ -288,21 +283,24 @@ void iwl_rx_allocate(struct iwl_priv *priv, gfp_t priority)
 
 		spin_unlock_irqrestore(&rxq->lock, flags);
 
-		rxb->page = page;
-		/* Get physical address of the RB */
-		rxb->page_dma = pci_map_page(priv->pci_dev, page, 0,
-				PAGE_SIZE << priv->hw_params.rx_page_order,
-				PCI_DMA_FROMDEVICE);
+		rxb->skb = skb;
+		/* Get physical address of RB/SKB */
+		rxb->real_dma_addr = pci_map_single(
+					priv->pci_dev,
+					rxb->skb->data,
+					priv->hw_params.rx_buf_size + 256,
+					PCI_DMA_FROMDEVICE);
 		/* dma address must be no more than 36 bits */
-		BUG_ON(rxb->page_dma & ~DMA_BIT_MASK(36));
+		BUG_ON(rxb->real_dma_addr & ~DMA_BIT_MASK(36));
 		/* and also 256 byte aligned! */
-		BUG_ON(rxb->page_dma & DMA_BIT_MASK(8));
+		rxb->aligned_dma_addr = ALIGN(rxb->real_dma_addr, 256);
+		skb_reserve(rxb->skb, rxb->aligned_dma_addr - rxb->real_dma_addr);
 
 		spin_lock_irqsave(&rxq->lock, flags);
 
 		list_add_tail(&rxb->list, &rxq->rx_free);
 		rxq->free_count++;
-		priv->alloc_rxb_page++;
+		priv->alloc_rxb_skb++;
 
 		spin_unlock_irqrestore(&rxq->lock, flags);
 	}
@@ -338,14 +336,12 @@ void iwl_rx_queue_free(struct iwl_priv *priv, struct iwl_rx_queue *rxq)
 {
 	int i;
 	for (i = 0; i < RX_QUEUE_SIZE + RX_FREE_BUFFERS; i++) {
-		if (rxq->pool[i].page != NULL) {
-			pci_unmap_page(priv->pci_dev, rxq->pool[i].page_dma,
-				PAGE_SIZE << priv->hw_params.rx_page_order,
-				PCI_DMA_FROMDEVICE);
-			__free_pages(rxq->pool[i].page,
-				     priv->hw_params.rx_page_order);
-			rxq->pool[i].page = NULL;
-			priv->alloc_rxb_page--;
+		if (rxq->pool[i].skb != NULL) {
+			pci_unmap_single(priv->pci_dev,
+					 rxq->pool[i].real_dma_addr,
+					 priv->hw_params.rx_buf_size + 256,
+					 PCI_DMA_FROMDEVICE);
+			dev_kfree_skb(rxq->pool[i].skb);
 		}
 	}
 
@@ -410,14 +406,14 @@ void iwl_rx_queue_reset(struct iwl_priv *priv, struct iwl_rx_queue *rxq)
 	for (i = 0; i < RX_FREE_BUFFERS + RX_QUEUE_SIZE; i++) {
 		/* In the reset function, these buffers may have been allocated
 		 * to an SKB, so we need to unmap and free potential storage */
-		if (rxq->pool[i].page != NULL) {
-			pci_unmap_page(priv->pci_dev, rxq->pool[i].page_dma,
-				PAGE_SIZE << priv->hw_params.rx_page_order,
-				PCI_DMA_FROMDEVICE);
-			priv->alloc_rxb_page--;
-			__free_pages(rxq->pool[i].page,
-				     priv->hw_params.rx_page_order);
-			rxq->pool[i].page = NULL;
+		if (rxq->pool[i].skb != NULL) {
+			pci_unmap_single(priv->pci_dev,
+					 rxq->pool[i].real_dma_addr,
+					 priv->hw_params.rx_buf_size + 256,
+					 PCI_DMA_FROMDEVICE);
+			priv->alloc_rxb_skb--;
+			dev_kfree_skb(rxq->pool[i].skb);
+			rxq->pool[i].skb = NULL;
 		}
 		list_add_tail(&rxq->pool[i].list, &rxq->rx_used);
 	}
@@ -496,7 +492,7 @@ void iwl_rx_missed_beacon_notif(struct iwl_priv *priv,
 				struct iwl_rx_mem_buffer *rxb)
 
 {
-	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_rx_packet *pkt = (struct iwl_rx_packet *)rxb->skb->data;
 	struct iwl_missed_beacon_notif *missed_beacon;
 
 	missed_beacon = &pkt->u.missed_beacon;
@@ -559,7 +555,7 @@ void iwl_rx_statistics(struct iwl_priv *priv,
 			      struct iwl_rx_mem_buffer *rxb)
 {
 	int change;
-	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_rx_packet *pkt = (struct iwl_rx_packet *)rxb->skb->data;
 
 	IWL_DEBUG_RX(priv, "Statistics notification received (%d vs %d).\n",
 		     (int)sizeof(priv->statistics),
@@ -883,9 +879,6 @@ static void iwl_pass_packet_to_mac80211(struct iwl_priv *priv,
 					struct iwl_rx_mem_buffer *rxb,
 					struct ieee80211_rx_status *stats)
 {
-	struct sk_buff *skb;
-	int ret = 0;
-
 	/* We only process data packets if the interface is open */
 	if (unlikely(!priv->is_open)) {
 		IWL_DEBUG_DROP_LIMIT(priv,
@@ -898,38 +891,15 @@ static void iwl_pass_packet_to_mac80211(struct iwl_priv *priv,
 	    iwl_set_decrypted_flag(priv, hdr, ampdu_status, stats))
 		return;
 
-	skb = alloc_skb(IWL_LINK_HDR_MAX, GFP_ATOMIC);
-	if (!skb) {
-		IWL_ERR(priv, "alloc_skb failed\n");
-		return;
-	}
-
-	skb_add_rx_frag(skb, 0, rxb->page, (void *)hdr - rxb_addr(rxb), len);
-
-	/* mac80211 currently doesn't support paged SKB. Convert it to
-	 * linear SKB for management frame and data frame requires
-	 * software decryption or software defragementation. */
-	if (ieee80211_is_mgmt(hdr->frame_control) ||
-	    ieee80211_has_protected(hdr->frame_control) ||
-	    ieee80211_has_morefrags(hdr->frame_control) ||
-	    le16_to_cpu(hdr->seq_ctrl) & IEEE80211_SCTL_FRAG)
-		ret = skb_linearize(skb);
-	else
-		ret = __pskb_pull_tail(skb, min_t(u16, IWL_LINK_HDR_MAX, len)) ?
-			 0 : -ENOMEM;
-
-	if (ret) {
-		kfree_skb(skb);
-		goto out;
-	}
+	/* Resize SKB from mac header to end of packet */
+	skb_reserve(rxb->skb, (void *)hdr - (void *)rxb->skb->data);
+	skb_put(rxb->skb, len);
 
 	iwl_update_stats(priv, false, hdr->frame_control, len);
-	memcpy(IEEE80211_SKB_RXCB(skb), stats, sizeof(*stats));
-
-	ieee80211_rx(priv->hw, skb);
- out:
-	priv->alloc_rxb_page--;
-	rxb->page = NULL;
+	memcpy(IEEE80211_SKB_RXCB(rxb->skb), stats, sizeof(*stats));
+	ieee80211_rx_irqsafe(priv->hw, rxb->skb);
+	priv->alloc_rxb_skb--;
+	rxb->skb = NULL;
 }
 
 /* This is necessary only for a number of statistics, see the caller. */
@@ -957,7 +927,7 @@ void iwl_rx_reply_rx(struct iwl_priv *priv,
 {
 	struct ieee80211_hdr *header;
 	struct ieee80211_rx_status rx_status;
-	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_rx_packet *pkt = (struct iwl_rx_packet *)rxb->skb->data;
 	struct iwl_rx_phy_res *phy_res;
 	__le32 rx_pkt_status;
 	struct iwl4965_rx_mpdu_res_start *amsdu;
@@ -1118,7 +1088,7 @@ EXPORT_SYMBOL(iwl_rx_reply_rx);
 void iwl_rx_reply_rx_phy(struct iwl_priv *priv,
 				    struct iwl_rx_mem_buffer *rxb)
 {
-	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_rx_packet *pkt = (struct iwl_rx_packet *)rxb->skb->data;
 	priv->last_phy_res[0] = 1;
 	memcpy(&priv->last_phy_res[1], &(pkt->u.raw[0]),
 	       sizeof(struct iwl_rx_phy_res));

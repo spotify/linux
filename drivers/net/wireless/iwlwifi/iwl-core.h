@@ -512,7 +512,7 @@ int iwl_send_cmd_pdu_async(struct iwl_priv *priv, u8 id, u16 len,
 			   const void *data,
 			   void (*callback)(struct iwl_priv *priv,
 					    struct iwl_device_cmd *cmd,
-					    struct iwl_rx_packet *pkt));
+					    struct sk_buff *skb));
 
 int iwl_enqueue_hcmd(struct iwl_priv *priv, struct iwl_host_cmd *cmd);
 
