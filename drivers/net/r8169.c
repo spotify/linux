@@ -23,6 +23,7 @@
 #include <linux/tcp.h>
 #include <linux/init.h>
 #include <linux/dma-mapping.h>
+#include <linux/firmware.h>
 
 #include <asm/system.h>
 #include <asm/io.h>
@@ -1364,6 +1365,23 @@ static void rtl_phy_write(void __iomem *ioaddr, struct phy_reg *regs, int len)
 	}
 }
 
+struct phy_reg_le {
+	__le16 reg;
+	__le16 val;
+};
+
+static void rtl_phy_write_fw(void __iomem *ioaddr, const struct firmware *fw)
+{
+	const struct phy_reg_le *regs = (const struct phy_reg_le *)fw->data;
+	size_t len = fw->size / sizeof(*regs);
+
+	while (len-- > 0) {
+		mdio_write(ioaddr, le16_to_cpu(regs->reg),
+			   le16_to_cpu(regs->val));
+		regs++;
+	}
+}
+
 static void rtl8169s_hw_phy_config(void __iomem *ioaddr)
 {
 	struct phy_reg phy_reg_init[] = {
@@ -1696,7 +1714,7 @@ static void rtl8168c_4_hw_phy_config(void __iomem *ioaddr)
 	rtl8168c_3_hw_phy_config(ioaddr);
 }
 
-static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
+static void rtl8168d_1_hw_phy_config(struct rtl8169_private *tp)
 {
 	static struct phy_reg phy_reg_init_0[] = {
 		{ 0x1f, 0x0001 },
@@ -1724,6 +1742,8 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 		{ 0x05, 0x8332 },
 		{ 0x06, 0x5561 }
 	};
+	void __iomem *ioaddr = tp->mmio_addr;
+	const struct firmware *fw;
 
 	rtl_phy_write(ioaddr, phy_reg_init_0, ARRAY_SIZE(phy_reg_init_0));
 
@@ -1781,12 +1801,16 @@ static void rtl8168d_1_hw_phy_config(void __iomem *ioaddr)
 	mdio_plus_minus(ioaddr, 0x02, 0x0100, 0x0600);
 	mdio_plus_minus(ioaddr, 0x03, 0x0000, 0xe000);
 
-#ifdef CONFIG_BROKEN
-	rtl_phy_write(ioaddr, phy_reg_init_2, ARRAY_SIZE(phy_reg_init_2));
-#endif
+	if (request_firmware(&fw, "rtl8168d-1.fw", &tp->pci_dev->dev) == 0) {
+		rtl_phy_write_fw(ioaddr, fw);
+		release_firmware(fw);
+	} else {
+		printk(KERN_WARNING "%s: unable to apply firmware patch\n",
+			tp->dev->name);
+	}
 }
 
-static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
+static void rtl8168d_2_hw_phy_config(struct rtl8169_private *tp)
 {
 	static struct phy_reg phy_reg_init_0[] = {
 		{ 0x1f, 0x0001 },
@@ -1813,6 +1837,8 @@ static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
 		{ 0x05, 0x8332 },
 		{ 0x06, 0x5561 }
 	};
+	void __iomem *ioaddr = tp->mmio_addr;
+	const struct firmware *fw;
 
 	rtl_phy_write(ioaddr, phy_reg_init_0, ARRAY_SIZE(phy_reg_init_0));
 
@@ -1866,9 +1892,13 @@ static void rtl8168d_2_hw_phy_config(void __iomem *ioaddr)
 	mdio_write(ioaddr, 0x1f, 0x0002);
 	mdio_patch(ioaddr, 0x0f, 0x0017);
 
-#ifdef CONFIG_BROKEN
-	rtl_phy_write(ioaddr, phy_reg_init_1, ARRAY_SIZE(phy_reg_init_1));
-#endif
+	if (request_firmware(&fw, "rtl8168d-2.fw", &tp->pci_dev->dev) == 0) {
+		rtl_phy_write_fw(ioaddr, fw);
+		release_firmware(fw);
+	} else {
+		printk(KERN_WARNING "%s: unable to apply firmware patch\n",
+			tp->dev->name);
+	}
 }
 
 static void rtl8168d_3_hw_phy_config(void __iomem *ioaddr)
@@ -2006,10 +2036,10 @@ static void rtl_hw_phy_config(struct net_device *dev)
 		rtl8168cp_2_hw_phy_config(ioaddr);
 		break;
 	case RTL_GIGA_MAC_VER_25:
-		rtl8168d_1_hw_phy_config(ioaddr);
+		rtl8168d_1_hw_phy_config(tp);
 		break;
 	case RTL_GIGA_MAC_VER_26:
-		rtl8168d_2_hw_phy_config(ioaddr);
+		rtl8168d_2_hw_phy_config(tp);
 		break;
 	case RTL_GIGA_MAC_VER_27:
 		rtl8168d_3_hw_phy_config(ioaddr);
