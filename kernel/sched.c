@@ -528,7 +528,9 @@ struct rq {
 	struct mm_struct *prev_mm;
 
 	u64 clock;
+#ifndef __GENKSYMS__
 	u64 clock_task;
+#endif
 
 	atomic_t nr_iowait;
 
@@ -536,7 +538,9 @@ struct rq {
 	struct root_domain *rd;
 	struct sched_domain *sd;
 
+#ifndef __GENKSYMS__
 	unsigned long cpu_power;
+#endif
 
 	unsigned char idle_at_tick;
 	/* For active balancing */

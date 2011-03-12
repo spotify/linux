@@ -897,7 +897,9 @@ struct sched_group {
 	 * single CPU.
 	 */
 	unsigned int cpu_power;
+#ifndef __GENKSYMS__
 	unsigned int group_weight;
+#endif
 
 	/*
 	 * The CPUs this group covers.
