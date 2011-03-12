@@ -473,6 +473,12 @@ static struct rds_rdma_op *rds_rdma_prepare(struct rds_sock *rs,
 
 		max_pages = max(nr, max_pages);
 		nr_pages += nr;
+
+                /* CVE-2010-3865 */
+                if ((int)nr_pages < 0) {
+                   ret = -EINVAL;
+                   goto out;
+                }
 	}
 
 	pages = kcalloc(max_pages, sizeof(struct page *), GFP_KERNEL);
