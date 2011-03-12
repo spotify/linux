@@ -318,7 +318,7 @@ struct queue_limits {
 	unsigned short		max_phys_segments;
 
 	unsigned char		misaligned;
-	unsigned char		cluster;
+	unsigned char		no_cluster;
 };
 
 struct request_queue
@@ -440,6 +440,7 @@ struct request_queue
 #endif
 };
 
+#define QUEUE_FLAG_CLUSTER	0	/* cluster several segments into 1 */
 #define QUEUE_FLAG_QUEUED	1	/* uses generic tag queueing */
 #define QUEUE_FLAG_STOPPED	2	/* queue is stopped */
 #define	QUEUE_FLAG_SYNCFULL	3	/* read queue has been filled */
@@ -460,6 +461,7 @@ struct request_queue
 #define QUEUE_FLAG_DISCARD     17	/* supports DISCARD */
 
 #define QUEUE_FLAG_DEFAULT	((1 << QUEUE_FLAG_IO_STAT) |		\
+				 (1 << QUEUE_FLAG_CLUSTER) |		\
 				 (1 << QUEUE_FLAG_STACKABLE)	|	\
 				 (1 << QUEUE_FLAG_SAME_COMP))
 
@@ -627,7 +629,7 @@ enum {
 
 static inline unsigned int blk_queue_cluster(struct request_queue *q)
 {
-	return q->limits.cluster;
+	return test_bit(QUEUE_FLAG_CLUSTER, &q->queue_flags) && !q->limits.no_cluster;
 }
 
 /*
