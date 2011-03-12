@@ -251,6 +251,8 @@ static void __init qnap_ts41x_init(void)
 
 static int __init ts41x_pci_init(void)
 {
+	u32 dev, rev;
+
 	if (machine_is_ts41x()) {
 		/*
 		 * Without this explicit reset, the PCIe SATA controller
@@ -259,7 +261,11 @@ static int __init ts41x_pci_init(void)
 		 */
 		orion_pcie_reset((void __iomem *)PCIE_VIRT_BASE);
 
-		kirkwood_pcie_init(KW_PCIE0);
+		kirkwood_pcie_id(&dev, &rev);
+		if (dev == MV88F6282_DEV_ID)
+			kirkwood_pcie_init(KW_PCIE1 | KW_PCIE0);
+		else
+			kirkwood_pcie_init(KW_PCIE0);
 	}
 
    return 0;
