@@ -544,15 +544,6 @@ static struct drm_driver driver = {
 	.patchlevel = DRIVER_PATCHLEVEL,
 };
 
-/* KMS is reported to be unreliable for these devices */
-static const struct pci_device_id i915_kms_blacklist[] = {
-	INTEL_VGA_DEVICE(0x3577, 0),	/* i830 */
-	INTEL_VGA_DEVICE(0x2562, 0),	/* i845 */
-	INTEL_VGA_DEVICE(0x3582, 0),	/* i855 */
-	INTEL_VGA_DEVICE(0x358e, 0),	/* i855 */
-	{ },
-};
-
 static int __init i915_init(void)
 {
 	driver.num_ioctls = i915_max_ioctl;
@@ -574,12 +565,6 @@ static int __init i915_init(void)
 #endif
 	if (i915_modeset == 1)
 		driver.driver_features |= DRIVER_MODESET;
-
-	if ((driver.driver_features & DRIVER_MODESET) &&
-	    pci_dev_present(i915_kms_blacklist)) {
-		DRM_INFO("KMS is not supported on this GPU\n");
-		driver.driver_features &= ~DRIVER_MODESET;
-	}
 
 #ifdef CONFIG_VGA_CONSOLE
 	if (vgacon_text_force() && i915_modeset == -1)
