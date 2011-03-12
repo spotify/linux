@@ -559,10 +559,10 @@ static void mdio_write(void __iomem *ioaddr, int reg_addr, int value)
 		udelay(25);
 	}
 	/*
-	 * According to hardware specs a 20us delay is required after write
-	 * complete indication, but before sending next command.
+	 * Some configurations require a small delay even after the write
+	 * completed indication or the next write might fail.
 	 */
-	udelay(20);
+	udelay(25);
 }
 
 static int mdio_read(void __iomem *ioaddr, int reg_addr)
@@ -582,12 +582,6 @@ static int mdio_read(void __iomem *ioaddr, int reg_addr)
 		}
 		udelay(25);
 	}
-	/*
-	 * According to hardware specs a 20us delay is required after read
-	 * complete indication, but before sending next command.
-	 */
-	udelay(20);
-
 	return value;
 }
 
