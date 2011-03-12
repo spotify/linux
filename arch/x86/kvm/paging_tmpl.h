@@ -491,23 +491,18 @@ static void FNAME(invlpg)(struct kvm_vcpu *vcpu, gva_t gva)
 	spin_unlock(&vcpu->kvm->mmu_lock);
 }
 
-static gpa_t FNAME(gva_to_gpa)(struct kvm_vcpu *vcpu, gva_t vaddr, u32 access,
-			       u32 *error)
+static gpa_t FNAME(gva_to_gpa)(struct kvm_vcpu *vcpu, gva_t vaddr)
 {
 	struct guest_walker walker;
 	gpa_t gpa = UNMAPPED_GVA;
 	int r;
 
-	r = FNAME(walk_addr)(&walker, vcpu, vaddr,
-			     !!(access & PFERR_WRITE_MASK),
-			     !!(access & PFERR_USER_MASK),
-			     !!(access & PFERR_FETCH_MASK));
+	r = FNAME(walk_addr)(&walker, vcpu, vaddr, 0, 0, 0);
 
 	if (r) {
 		gpa = gfn_to_gpa(walker.gfn);
 		gpa |= vaddr & ~PAGE_MASK;
-	} else if(error)
-		*error = walker.error_code;
+	}
 
 	return gpa;
 }
