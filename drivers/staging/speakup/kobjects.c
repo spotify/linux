@@ -11,6 +11,7 @@
  * Released under the GPL version 2 only.
  *
  */
+#include <linux/slab.h>		/* For kmalloc. */
 #include <linux/kernel.h>
 #include <linux/kobject.h>
 #include <linux/string.h>
@@ -642,6 +643,26 @@ ssize_t spk_var_store(struct kobject *kobj, struct kobj_attribute *attr,
 		pr_warn("%s unknown type %d\n",
 			param->name, (int)param->var_type);
 	break;
+	}
+	/*
+	 * If voice was just changed, we might need to reset our default
+	 * pitch and volume.
+	 */
+	if (strcmp(attr->attr.name, "voice") == 0) {
+		if (synth && synth->default_pitch) {
+			param = var_header_by_name("pitch");
+			if (param)  {
+				set_num_var(synth->default_pitch[value], param, E_NEW_DEFAULT);
+				set_num_var(0, param, E_DEFAULT);
+			}
+		}
+		if (synth && synth->default_vol) {
+			param = var_header_by_name("vol");
+			if (param)  {
+				set_num_var(synth->default_vol[value], param, E_NEW_DEFAULT);
+				set_num_var(0, param, E_DEFAULT);
+			}
+		}
 	}
 	spk_unlock(flags);
 

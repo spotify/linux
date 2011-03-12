@@ -33,7 +33,7 @@
 #include "spk_priv.h"
 #include "serialio.h"
 
-#define DRV_VERSION "2.15"
+#define DRV_VERSION "2.20"
 #define SYNTH_CLEAR 0x03
 #define PROCSPEECH 0x0b
 static volatile int xoff;
@@ -51,13 +51,14 @@ static spinlock_t flush_lock;
 static DECLARE_WAIT_QUEUE_HEAD(flush);
 
 static struct var_t vars[] = {
-	{ CAPS_START, .u.s = {"[:dv ap 200]" }},
-	{ CAPS_STOP, .u.s = {"[:dv ap 100]" }},
-	{ RATE, .u.n = {"[:ra %d]", 9, 0, 18, 150, 25, NULL }},
-	{ PITCH, .u.n = {"[:dv ap %d]", 80, 0, 200, 20, 0, NULL }},
-	{ VOL, .u.n = {"[:dv gv %d]", 13, 0, 14, 0, 5, NULL }},
-	{ PUNCT, .u.n = {"[:pu %c]", 0, 0, 2, 0, 0, "nsa" }},
-	{ VOICE, .u.n = {"[:n%c]", 0, 0, 9, 0, 0, "phfdburwkv" }},
+	{ CAPS_START, .u.s = {"[:dv ap 160] " }},
+	{ CAPS_STOP, .u.s = {"[:dv ap 100 ] " }},
+	{ RATE, .u.n = {"[:ra %d] ", 180, 75, 650, 0, 0, NULL }},
+	{ PITCH, .u.n = {"[:dv ap %d] ", 122, 50, 350, 0, 0, NULL }},
+	{ VOL, .u.n = {"[:dv g5 %d] ", 86, 60, 86, 0, 0, NULL }},
+	{ PUNCT, .u.n = {"[:pu %c] ", 0, 0, 2, 0, 0, "nsa" }},
+	{ VOICE, .u.n = {"[:n%c] ", 0, 0, 9, 0, 0, "phfdburwkv" }},
+	{ DIRECT, .u.n = {NULL, 0, 0, 1, 0, 0, NULL }},
 	V_LAST_VAR
 };
 
@@ -81,6 +82,8 @@ static struct kobj_attribute vol_attribute =
 
 static struct kobj_attribute delay_time_attribute =
 	__ATTR(delay_time, ROOT_W, spk_var_show, spk_var_store);
+static struct kobj_attribute direct_attribute =
+	__ATTR(direct, USER_RW, spk_var_show, spk_var_store);
 static struct kobj_attribute full_time_attribute =
 	__ATTR(full_time, ROOT_W, spk_var_show, spk_var_store);
 static struct kobj_attribute jiffy_delta_attribute =
@@ -101,17 +104,21 @@ static struct attribute *synth_attrs[] = {
 	&voice_attribute.attr,
 	&vol_attribute.attr,
 	&delay_time_attribute.attr,
+	&direct_attribute.attr,
 	&full_time_attribute.attr,
 	&jiffy_delta_attribute.attr,
 	&trigger_time_attribute.attr,
 	NULL,	/* need to NULL terminate the list of attributes */
 };
 
+static int ap_defaults[] = {122, 89, 155, 110, 208, 240, 200, 106, 306};
+static int g5_defaults[] = {86, 81, 86, 84, 81, 80, 83, 83, 73};
+
 static struct spk_synth synth_dectlk = {
 	.name = "dectlk",
 	.version = DRV_VERSION,
 	.long_name = "Dectalk Express",
-	.init = "[:dv ap 100][:error sp]",
+	.init = "[:error sp :name paul :rate 180 :tsr off] ",
 	.procspeech = PROCSPEECH,
 	.clear = SYNTH_CLEAR,
 	.delay = 500,
@@ -121,6 +128,8 @@ static struct spk_synth synth_dectlk = {
 	.startup = SYNTH_START,
 	.checkval = SYNTH_CHECK,
 	.vars = vars,
+	.default_pitch = ap_defaults,
+	.default_vol = g5_defaults,
 	.probe = serial_synth_probe,
 	.release = spk_serial_release,
 	.synth_immediate = spk_synth_immediate,
@@ -131,7 +140,7 @@ static struct spk_synth synth_dectlk = {
 	.read_buff_add = read_buff_add,
 	.get_index = get_index,
 	.indexing = {
-		.command = "[:in re %d] ",
+		.command = "[:in re %d ] ",
 		.lowindex = 1,
 		.highindex = 8,
 		.currindex = 1,

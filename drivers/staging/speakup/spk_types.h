@@ -28,7 +28,8 @@ enum {
 	E_DEFAULT = 0,
 	E_SET,
 	E_INC,
-	E_DEC
+	E_DEC,
+	E_NEW_DEFAULT,
 };
 
 enum var_id_t {
@@ -162,6 +163,8 @@ struct spk_synth {
 	short startup;
 	const int checkval; /* for validating a proper synth module */
 	struct var_t *vars;
+	int *default_pitch;
+	int *default_vol;
 	int (*probe)(struct spk_synth *synth);
 	void (*release)(void);
 	const char *(*synth_immediate)(struct spk_synth *synth, const char *buff);
@@ -182,4 +185,9 @@ struct speakup_info_t {
 	int flushing;
 };
 
+struct bleep {
+	short freq;
+	unsigned long jiffies;
+	int active;
+};
 #endif

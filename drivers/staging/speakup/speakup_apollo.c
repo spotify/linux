@@ -31,7 +31,7 @@
 #include "serialio.h"
 #include "speakup.h"
 
-#define DRV_VERSION "2.20"
+#define DRV_VERSION "2.21"
 #define SYNTH_CLEAR 0x18
 #define PROCSPEECH '\r'
 
@@ -45,6 +45,7 @@ static struct var_t vars[] = {
 	{ VOL, .u.n = {"@A%x", 10, 0, 15, 0, 0, NULL }},
 	{ VOICE, .u.n = {"@V%d", 1, 1, 6, 0, 0, NULL }},
 	{ LANG, .u.n = {"@=%d,", 1, 1, 4, 0, 0, NULL }},
+	{ DIRECT, .u.n = {NULL, 0, 0, 1, 0, 0, NULL }},
 	V_LAST_VAR
 };
 
@@ -68,6 +69,8 @@ static struct kobj_attribute vol_attribute =
 
 static struct kobj_attribute delay_time_attribute =
 	__ATTR(delay_time, ROOT_W, spk_var_show, spk_var_store);
+static struct kobj_attribute direct_attribute =
+	__ATTR(direct, USER_RW, spk_var_show, spk_var_store);
 static struct kobj_attribute full_time_attribute =
 	__ATTR(full_time, ROOT_W, spk_var_show, spk_var_store);
 static struct kobj_attribute jiffy_delta_attribute =
@@ -88,6 +91,7 @@ static struct attribute *synth_attrs[] = {
 	&voice_attribute.attr,
 	&vol_attribute.attr,
 	&delay_time_attribute.attr,
+	&direct_attribute.attr,
 	&full_time_attribute.attr,
 	&jiffy_delta_attribute.attr,
 	&trigger_time_attribute.attr,

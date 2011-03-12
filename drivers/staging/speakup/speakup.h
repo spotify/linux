@@ -5,7 +5,7 @@
 #include "spk_types.h"
 #include "i18n.h"
 
-#define SPEAKUP_VERSION "3.1.3"
+#define SPEAKUP_VERSION "3.1.5"
 #define KEY_MAP_VER 119
 #define SHIFT_TBL_SIZE 64
 #define MAX_DESC_LEN 72
@@ -40,10 +40,6 @@
 #define A_CTL (B_CTL+SYNTH_OK)
 #define B_SYM 0x0800
 #define B_CAPSYM (B_CAP|B_SYM)
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,23)
-#define inverse_translate(vc, c) inverse_translate(vc, c, 0)
-#endif
 
 #define IS_WDLM(x) (spk_chartab[((u_char)x)]&B_WDLM)
 #define IS_CHAR(x, type) (spk_chartab[((u_char)x)]&type)
@@ -120,5 +116,12 @@ extern short punc_mask;
 extern short pitch_shift, synth_flags;
 extern int quiet_boot;
 extern char *synth_name;
+extern struct bleep unprocessed_sound;
+
+/* Prototypes from fakekey.c. */
+int speakup_add_virtual_keyboard(void);
+void speakup_remove_virtual_keyboard(void);
+void speakup_fake_down_arrow(void);
+bool speakup_fake_key_pressed(void);
 
 #endif

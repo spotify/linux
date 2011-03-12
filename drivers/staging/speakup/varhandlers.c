@@ -186,6 +186,14 @@ int set_num_var(int input, struct st_var_header *var, int how)
 	struct var_t *var_data = var->data;
 	if (var_data == NULL)
 		return E_UNDEF;
+
+	if (how == E_NEW_DEFAULT) {
+		if (input < var_data->u.n.low || input > var_data->u.n.high)
+			ret = E_RANGE;
+		else
+			var_data->u.n.default_val = input;
+		return ret;
+	}
 	if (how == E_DEFAULT) {
 		val = var_data->u.n.default_val;
 		ret = SET_DEFAULT;

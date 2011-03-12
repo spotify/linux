@@ -27,7 +27,7 @@
 #include "serialio.h"
 #include "speakup_dtlk.h" /* local header file for LiteTalk values */
 
-#define DRV_VERSION "2.10"
+#define DRV_VERSION "2.11"
 #define synth_full( ) ( !( inb( synth_port_tts + UART_MSR ) & UART_MSR_CTS ) )
 #define PROCSPEECH 0x0d
 
@@ -43,6 +43,7 @@ static struct var_t vars[] = {
 	{ PUNCT, .u.n = {"\x01%db", 7, 0, 15, 0, 0, NULL }},
 	{ VOICE, .u.n = {"\x01%do", 0, 0, 7, 0, 0, NULL }},
 	{ FREQUENCY, .u.n = {"\x01%df", 5, 0, 9, 0, 0, NULL }},
+	{ DIRECT, .u.n = {NULL, 0, 0, 1, 0, 0, NULL }},
 	V_LAST_VAR
 };
 
@@ -70,6 +71,8 @@ static struct kobj_attribute vol_attribute =
 
 static struct kobj_attribute delay_time_attribute =
 	__ATTR(delay_time, ROOT_W, spk_var_show, spk_var_store);
+static struct kobj_attribute direct_attribute =
+	__ATTR(direct, USER_RW, spk_var_show, spk_var_store);
 static struct kobj_attribute full_time_attribute =
 	__ATTR(full_time, ROOT_W, spk_var_show, spk_var_store);
 static struct kobj_attribute jiffy_delta_attribute =
@@ -92,6 +95,7 @@ static struct attribute *synth_attrs[] = {
 	&voice_attribute.attr,
 	&vol_attribute.attr,
 	&delay_time_attribute.attr,
+	&direct_attribute.attr,
 	&full_time_attribute.attr,
 	&jiffy_delta_attribute.attr,
 	&trigger_time_attribute.attr,

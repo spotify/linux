@@ -12,14 +12,22 @@ int speakup_thread(void *data)
 {
 	unsigned long flags;
 	int should_break;
+	struct bleep our_sound;
+
+	our_sound.active = 0;
+	our_sound.freq = 0;
+	our_sound.jiffies = 0;
 
 	mutex_lock(&spk_mutex);
 	while (1) {
 		DEFINE_WAIT(wait);
 		while(1) {
 			spk_lock(flags);
+			our_sound = unprocessed_sound;
+			unprocessed_sound.active = 0;
 			prepare_to_wait(&speakup_event, &wait, TASK_INTERRUPTIBLE);
 			should_break = kthread_should_stop() ||
+				our_sound.active ||
 				(synth && synth->catch_up && synth->alive &&
 					(speakup_info.flushing ||
 					!synth_buffer_empty()));
@@ -34,6 +42,9 @@ int speakup_thread(void *data)
 		if (kthread_should_stop())
 			break;
 
+		if (our_sound.active) {
+			kd_mksound(our_sound.freq, our_sound.jiffies);
+		}
 		if (synth && synth->catch_up && synth->alive) {
 			/* It is up to the callee to take the lock, so that it
 			 * can sleep whenever it likes */

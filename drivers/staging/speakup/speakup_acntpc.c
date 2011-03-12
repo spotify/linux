@@ -34,7 +34,7 @@
 #include "speakup.h"
 #include "speakup_acnt.h" /* local header file for Accent values */
 
-#define DRV_VERSION "2.9"
+#define DRV_VERSION "2.10"
 #define synth_readable() (inb_p(synth_port_control) & SYNTH_READABLE)
 #define synth_writable() (inb_p(synth_port_control) & SYNTH_WRITABLE)
 #define synth_full() (inb_p(speakup_info.port_tts + UART_RX) == 'F')
@@ -57,6 +57,7 @@ static struct var_t vars[] = {
 	{ PITCH, .u.n = {"\033P%d", 5, 0, 9, 0, 0, NULL }},
 	{ VOL, .u.n = {"\033A%d", 5, 0, 9, 0, 0, NULL }},
 	{ TONE, .u.n = {"\033V%d", 5, 0, 9, 0, 0, NULL }},
+	{ DIRECT, .u.n = {NULL, 0, 0, 1, 0, 0, NULL }},
 	V_LAST_VAR
 };
 
@@ -78,6 +79,8 @@ static struct kobj_attribute vol_attribute =
 
 static struct kobj_attribute delay_time_attribute =
 	__ATTR(delay_time, ROOT_W, spk_var_show, spk_var_store);
+static struct kobj_attribute direct_attribute =
+	__ATTR(direct, USER_RW, spk_var_show, spk_var_store);
 static struct kobj_attribute full_time_attribute =
 	__ATTR(full_time, ROOT_W, spk_var_show, spk_var_store);
 static struct kobj_attribute jiffy_delta_attribute =
@@ -97,6 +100,7 @@ static struct attribute *synth_attrs[] = {
 	&tone_attribute.attr,
 	&vol_attribute.attr,
 	&delay_time_attribute.attr,
+	&direct_attribute.attr,
 	&full_time_attribute.attr,
 	&jiffy_delta_attribute.attr,
 	&trigger_time_attribute.attr,
@@ -279,7 +283,7 @@ static int synth_probe(struct spk_synth *synth)
 	if (port_val != 0x53fc) {
 		/* 'S' and out&input bits */
 		pr_info("%s: not found\n", synth->long_name);
-		synth_release_region(synth_portlist[i], SYNTH_IO_EXTENT);
+		synth_release_region(synth_port_control, SYNTH_IO_EXTENT);
 		synth_port_control = 0;
 		return -ENODEV;
 	}

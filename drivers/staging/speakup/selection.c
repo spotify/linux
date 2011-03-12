@@ -1,3 +1,4 @@
+#include <linux/slab.h> /* for kmalloc */
 #include <linux/consolemap.h>
 #include <linux/interrupt.h>
 #include <linux/sched.h>
@@ -22,7 +23,7 @@ static char *sel_buffer;
 
 static unsigned char sel_pos(int n)
 {
-	return inverse_translate(spk_sel_cons, screen_glyph(spk_sel_cons, n));
+	return inverse_translate(spk_sel_cons, screen_glyph(spk_sel_cons, n), 0);
 }
 
 void speakup_clear_selection(void)

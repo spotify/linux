@@ -20,6 +20,7 @@ struct serial_state *spk_serial_init(int index)
 	unsigned int cval = 0;
 	int cflag = CREAD | HUPCL | CLOCAL | B9600 | CS8;
 	struct serial_state *ser = NULL;
+	int err;
 
 	ser = rs_table + index;
 	/*	Divisor, bytesize and parity */
@@ -38,8 +39,11 @@ struct serial_state *spk_serial_init(int index)
 		/* try to take it back. */
 		printk("Ports not available, trying to steal them\n");
 		__release_region(&ioport_resource, ser->port, 8);
-		if (synth_request_region(ser->port, 8))
+		err = synth_request_region(ser->port, 8);
+		if (err) {
+			pr_warn("Unable to allocate port at %x, errno %i", ser->port, err);
 			return NULL;
+		}
 	}
 
 	/*	Disable UART interrupts, set DTR and RTS high

@@ -18,6 +18,7 @@ speakup-objs := \
 	buffers.o \
 	devsynth.o \
 	i18n.o \
+	fakekey.o \
 	main.o \
 	keyhelp.o \
 	kobjects.o \
