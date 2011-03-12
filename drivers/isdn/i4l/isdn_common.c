@@ -38,6 +38,7 @@
 MODULE_DESCRIPTION("ISDN4Linux: link layer");
 MODULE_AUTHOR("Fritz Elfert");
 MODULE_LICENSE("GPL");
+MODULE_INFO(staging, "Y");
 
 isdn_dev *dev;
 
