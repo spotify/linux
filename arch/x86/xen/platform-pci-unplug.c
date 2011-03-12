@@ -78,11 +78,10 @@ void __init xen_unplug_emulated_devices(void)
 	/* check the version of the xen platform PCI device */
 	r = check_platform_magic();
 	/* If the version matches enable the Xen platform PCI driver.
-	 * Also enable the Xen platform PCI driver if the host does
-	 * not support the unplug protocol (XEN_PLATFORM_ERR_MAGIC)
-	 * but the user told us that unplugging is unnecessary. */
+	 * Also enable the Xen platform PCI driver if the version is really old
+	 * and the user told us to ignore it. */
 	if (r && !(r == XEN_PLATFORM_ERR_MAGIC &&
-			(xen_emul_unplug & XEN_UNPLUG_UNNECESSARY)))
+			(xen_emul_unplug & XEN_UNPLUG_IGNORE)))
 		return;
 	/* Set the default value of xen_emul_unplug depending on whether or
 	 * not the Xen PV frontends and the Xen platform PCI driver have
@@ -103,7 +102,7 @@ void __init xen_unplug_emulated_devices(void)
 		}
 	}
 	/* Now unplug the emulated devices */
-	if (!(xen_emul_unplug & XEN_UNPLUG_UNNECESSARY))
+	if (!(xen_emul_unplug & XEN_UNPLUG_IGNORE))
 		outw(xen_emul_unplug, XEN_IOPORT_UNPLUG);
 	xen_platform_pci_unplug = xen_emul_unplug;
 }
@@ -129,8 +128,8 @@ static int __init parse_xen_emul_unplug(char *arg)
 			xen_emul_unplug |= XEN_UNPLUG_AUX_IDE_DISKS;
 		else if (!strncmp(p, "nics", l))
 			xen_emul_unplug |= XEN_UNPLUG_ALL_NICS;
-		else if (!strncmp(p, "unnecessary", l))
-			xen_emul_unplug |= XEN_UNPLUG_UNNECESSARY;
+		else if (!strncmp(p, "ignore", l))
+			xen_emul_unplug |= XEN_UNPLUG_IGNORE;
 		else if (!strncmp(p, "never", l))
 			xen_emul_unplug |= XEN_UNPLUG_NEVER;
 		else

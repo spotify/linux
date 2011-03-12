@@ -741,7 +741,7 @@ static int blkfront_probe(struct xenbus_device *dev,
 		char *type;
 		int len;
 		/* no unplug has been done: do not hook devices != xen vbds */
-		if (xen_platform_pci_unplug & XEN_UNPLUG_UNNECESSARY) {
+		if (xen_platform_pci_unplug & XEN_UNPLUG_IGNORE) {
 			int major;
 
 			if (!VDEV_IS_EXTENDED(vdevice))
