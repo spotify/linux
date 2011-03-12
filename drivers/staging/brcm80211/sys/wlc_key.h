@@ -65,11 +65,11 @@ struct wlc_bsscfg;
 #define WSEC_KEY(wlc, i)	(((wlc)->wsec_keys[i] && (wlc)->wsec_keys[i]->len) ? \
 	(wlc)->wsec_keys[i] : NULL)
 
-#define WSEC_SCB_KEY_VALID(scb)	(((scb)->key && (scb)->key->len) ? TRUE : FALSE)
+#define WSEC_SCB_KEY_VALID(scb)	(((scb)->key && (scb)->key->len) ? true : false)
 
 /* default key */
 #define WSEC_BSS_DEFAULT_KEY(bsscfg) (((bsscfg)->wsec_index == -1) ? \
-	(struct wsec_key*)NULL : (bsscfg)->bss_def_keys[(bsscfg)->wsec_index])
+	(struct wsec_key *)NULL:(bsscfg)->bss_def_keys[(bsscfg)->wsec_index])
 
 /* Macros for key management in IBSS mode */
 #define WSEC_IBSS_MAX_PEERS	16	/* Max # of IBSS Peers */
@@ -80,33 +80,34 @@ struct wlc_bsscfg;
 #define WSEC_BSS_STA_KEY_GROUP_SIZE	5
 
 typedef struct wsec_iv {
-	uint32 hi;		/* upper 32 bits of IV */
-	uint16 lo;		/* lower 16 bits of IV */
+	u32 hi;		/* upper 32 bits of IV */
+	u16 lo;		/* lower 16 bits of IV */
 } wsec_iv_t;
 
 #define WLC_NUMRXIVS	16	/* # rx IVs (one per 802.11e TID) */
 
 typedef struct wsec_key {
 	struct ether_addr ea;	/* per station */
-	uint8 idx;		/* key index in wsec_keys array */
-	uint8 id;		/* key ID [0-3] */
-	uint8 algo;		/* CRYPTO_ALGO_AES_CCM, CRYPTO_ALGO_WEP128, etc */
-	uint8 rcmta;		/* rcmta entry index, same as idx by default */
-	uint16 flags;		/* misc flags */
-	uint8 algo_hw;		/* cache for hw register */
-	uint8 aes_mode;		/* cache for hw register */
-	int8 iv_len;		/* IV length */
-	int8 icv_len;		/* ICV length */
-	uint32 len;		/* key length..don't move this var */
+	u8 idx;		/* key index in wsec_keys array */
+	u8 id;		/* key ID [0-3] */
+	u8 algo;		/* CRYPTO_ALGO_AES_CCM, CRYPTO_ALGO_WEP128, etc */
+	u8 rcmta;		/* rcmta entry index, same as idx by default */
+	u16 flags;		/* misc flags */
+	u8 algo_hw;		/* cache for hw register */
+	u8 aes_mode;		/* cache for hw register */
+	s8 iv_len;		/* IV length */
+	s8 icv_len;		/* ICV length */
+	u32 len;		/* key length..don't move this var */
 	/* data is 4byte aligned */
-	uint8 data[DOT11_MAX_KEY_SIZE];	/* key data */
+	u8 data[DOT11_MAX_KEY_SIZE];	/* key data */
 	wsec_iv_t rxiv[WLC_NUMRXIVS];	/* Rx IV (one per TID) */
 	wsec_iv_t txiv;		/* Tx IV */
 
 } wsec_key_t;
 
+#define broken_roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 typedef struct {
-	uint8 vec[ROUNDUP(WSEC_MAX_KEYS, NBBY) / NBBY];	/* bitvec of wsec_key indexes */
+	u8 vec[broken_roundup(WSEC_MAX_KEYS, NBBY) / NBBY];	/* bitvec of wsec_key indexes */
 } wsec_key_vec_t;
 
 /* For use with wsec_key_t.flags */
@@ -130,7 +131,7 @@ typedef struct {
 #define wlc_key_hw_wowl_init(a, b, c, d) do {} while (0)
 #define wlc_key_sw_wowl_update(a, b, c, d, e) do {} while (0)
 #define wlc_key_sw_wowl_create(a, b, c) (BCME_ERROR)
-#define wlc_key_iv_update(a, b, c, d, e) do {(void)e;} while (0)
+#define wlc_key_iv_update(a, b, c, d, e) do {(void)e; } while (0)
 #define wlc_key_iv_init(a, b, c) do {} while (0)
 #define wlc_key_set_error(a, b, c) (BCME_ERROR)
 #define wlc_key_dump_hw(a, b) (BCME_ERROR)

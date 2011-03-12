@@ -14,10 +14,12 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <wlc_cfg.h>
-#include <typedefs.h>
+#include <linux/kernel.h>
+#include <linux/string.h>
 #include <bcmdefs.h>
+#include <wlc_cfg.h>
 #include <osl.h>
+#include <linuxver.h>
 #include <bcmutils.h>
 #include <siutils.h>
 #include <wlioctl.h>
@@ -29,11 +31,11 @@
 #include <wlc_channel.h>
 
 typedef struct wlc_cm_band {
-	uint8 locale_flags;	/* locale_info_t flags */
+	u8 locale_flags;	/* locale_info_t flags */
 	chanvec_t valid_channels;	/* List of valid channels in the country */
 	const chanvec_t *restricted_channels;	/* List of restricted use channels */
 	const chanvec_t *radar_channels;	/* List of radar sensitive channels */
-	uint8 PAD[8];
+	u8 PAD[8];
 } wlc_cm_band_t;
 
 struct wlc_cm_info {
@@ -50,32 +52,32 @@ struct wlc_cm_info {
 	chanvec_t quiet_channels;	/* channels on which we cannot transmit */
 };
 
-static int wlc_channels_init(wlc_cm_info_t * wlc_cm,
-			     const country_info_t * country);
-static void wlc_set_country_common(wlc_cm_info_t * wlc_cm,
+static int wlc_channels_init(wlc_cm_info_t *wlc_cm,
+			     const country_info_t *country);
+static void wlc_set_country_common(wlc_cm_info_t *wlc_cm,
 				   const char *country_abbrev,
 				   const char *ccode, uint regrev,
-				   const country_info_t * country);
-static int wlc_country_aggregate_map(wlc_cm_info_t * wlc_cm, const char *ccode,
-				     char *mapped_ccode, uint * mapped_regrev);
+				   const country_info_t *country);
+static int wlc_country_aggregate_map(wlc_cm_info_t *wlc_cm, const char *ccode,
+				     char *mapped_ccode, uint *mapped_regrev);
 static const country_info_t *wlc_country_lookup_direct(const char *ccode,
 						       uint regrev);
-static const country_info_t *wlc_countrycode_map(wlc_cm_info_t * wlc_cm,
+static const country_info_t *wlc_countrycode_map(wlc_cm_info_t *wlc_cm,
 						 const char *ccode,
 						 char *mapped_ccode,
-						 uint * mapped_regrev);
-static void wlc_channels_commit(wlc_cm_info_t * wlc_cm);
+						 uint *mapped_regrev);
+static void wlc_channels_commit(wlc_cm_info_t *wlc_cm);
 static bool wlc_japan_ccode(const char *ccode);
 static void wlc_channel_min_txpower_limits_with_local_constraint(wlc_cm_info_t *
 								 wlc_cm,
 								 struct
 								 txpwr_limits
 								 *txpwr,
-								 uint8
+								 u8
 								 local_constraint_qdbm);
-void wlc_locale_add_channels(chanvec_t * target, const chanvec_t * channels);
-static const locale_mimo_info_t *wlc_get_mimo_2g(uint8 locale_idx);
-static const locale_mimo_info_t *wlc_get_mimo_5g(uint8 locale_idx);
+void wlc_locale_add_channels(chanvec_t *target, const chanvec_t *channels);
+static const locale_mimo_info_t *wlc_get_mimo_2g(u8 locale_idx);
+static const locale_mimo_info_t *wlc_get_mimo_5g(u8 locale_idx);
 
 /* QDB() macro takes a dB value and converts to a quarter dB value */
 #ifdef QDB
@@ -190,12 +192,12 @@ static const chanvec_t restricted_set_12_13_14 = {
 #define  LOCALE_CHAN_52_140_ALL  (1<<14)
 #define  LOCALE_SET_5G_HIGH4     (1<<15)	/* 184-216 */
 
-#define  LOCALE_CHAN_36_64       LOCALE_SET_5G_LOW1 | LOCALE_SET_5G_LOW2 | LOCALE_SET_5G_LOW3
-#define  LOCALE_CHAN_52_64       LOCALE_SET_5G_LOW2 | LOCALE_SET_5G_LOW3
-#define  LOCALE_CHAN_100_124	 LOCALE_SET_5G_MID1 | LOCALE_SET_5G_MID2
+#define  LOCALE_CHAN_36_64       (LOCALE_SET_5G_LOW1 | LOCALE_SET_5G_LOW2 | LOCALE_SET_5G_LOW3)
+#define  LOCALE_CHAN_52_64       (LOCALE_SET_5G_LOW2 | LOCALE_SET_5G_LOW3)
+#define  LOCALE_CHAN_100_124	 (LOCALE_SET_5G_MID1 | LOCALE_SET_5G_MID2)
 #define  LOCALE_CHAN_100_140     \
-	LOCALE_SET_5G_MID1 | LOCALE_SET_5G_MID2 | LOCALE_SET_5G_MID3 | LOCALE_SET_5G_HIGH1
-#define  LOCALE_CHAN_149_165     LOCALE_SET_5G_HIGH2 | LOCALE_SET_5G_HIGH3
+	(LOCALE_SET_5G_MID1 | LOCALE_SET_5G_MID2 | LOCALE_SET_5G_MID3 | LOCALE_SET_5G_HIGH1)
+#define  LOCALE_CHAN_149_165     (LOCALE_SET_5G_HIGH2 | LOCALE_SET_5G_HIGH3)
 #define  LOCALE_CHAN_184_216     LOCALE_SET_5G_HIGH4
 
 #define  LOCALE_CHAN_01_14	(LOCALE_CHAN_01_11 | LOCALE_CHAN_12_13 | LOCALE_CHAN_14)
@@ -363,21 +365,21 @@ static const chanvec_t *g_table_locale_base[] = {
 	&locale_5g_HIGH4
 };
 
-void wlc_locale_add_channels(chanvec_t * target, const chanvec_t * channels)
+void wlc_locale_add_channels(chanvec_t *target, const chanvec_t *channels)
 {
-	uint8 i;
+	u8 i;
 	for (i = 0; i < sizeof(chanvec_t); i++) {
 		target->vec[i] |= channels->vec[i];
 	}
 }
 
-void wlc_locale_get_channels(const locale_info_t * locale, chanvec_t * channels)
+void wlc_locale_get_channels(const locale_info_t *locale, chanvec_t *channels)
 {
-	uint8 i;
+	u8 i;
 
 	bzero(channels, sizeof(chanvec_t));
 
-	for (i = 0; i < ARRAYSIZE(g_table_locale_base); i++) {
+	for (i = 0; i < ARRAY_SIZE(g_table_locale_base); i++) {
 		if (locale->valid_channels & (1 << i)) {
 			wlc_locale_add_channels(channels,
 						g_table_locale_base[i]);
@@ -483,8 +485,8 @@ static const struct {
 #ifdef SUPPORT_40MHZ
 /* 20MHz channel info for 40MHz pairing support */
 struct chan20_info {
-	uint8 sb;
-	uint8 adj_sbs;
+	u8 sb;
+	u8 adj_sbs;
 };
 
 /* indicates adjacent channels that are allowed for a 40 Mhz channel and
@@ -557,31 +559,31 @@ struct chan20_info chan20_info[] = {
 };
 #endif				/* SUPPORT_40MHZ */
 
-const locale_info_t *wlc_get_locale_2g(uint8 locale_idx)
+const locale_info_t *wlc_get_locale_2g(u8 locale_idx)
 {
-	if (locale_idx >= ARRAYSIZE(g_locale_2g_table)) {
+	if (locale_idx >= ARRAY_SIZE(g_locale_2g_table)) {
 		WL_ERROR(("%s: locale 2g index size out of range %d\n",
 			  __func__, locale_idx));
-		ASSERT(locale_idx < ARRAYSIZE(g_locale_2g_table));
+		ASSERT(locale_idx < ARRAY_SIZE(g_locale_2g_table));
 		return NULL;
 	}
 	return g_locale_2g_table[locale_idx];
 }
 
-const locale_info_t *wlc_get_locale_5g(uint8 locale_idx)
+const locale_info_t *wlc_get_locale_5g(u8 locale_idx)
 {
-	if (locale_idx >= ARRAYSIZE(g_locale_5g_table)) {
+	if (locale_idx >= ARRAY_SIZE(g_locale_5g_table)) {
 		WL_ERROR(("%s: locale 5g index size out of range %d\n",
 			  __func__, locale_idx));
-		ASSERT(locale_idx < ARRAYSIZE(g_locale_5g_table));
+		ASSERT(locale_idx < ARRAY_SIZE(g_locale_5g_table));
 		return NULL;
 	}
 	return g_locale_5g_table[locale_idx];
 }
 
-const locale_mimo_info_t *wlc_get_mimo_2g(uint8 locale_idx)
+const locale_mimo_info_t *wlc_get_mimo_2g(u8 locale_idx)
 {
-	if (locale_idx >= ARRAYSIZE(g_mimo_2g_table)) {
+	if (locale_idx >= ARRAY_SIZE(g_mimo_2g_table)) {
 		WL_ERROR(("%s: mimo 2g index size out of range %d\n", __func__,
 			  locale_idx));
 		return NULL;
@@ -589,9 +591,9 @@ const locale_mimo_info_t *wlc_get_mimo_2g(uint8 locale_idx)
 	return g_mimo_2g_table[locale_idx];
 }
 
-const locale_mimo_info_t *wlc_get_mimo_5g(uint8 locale_idx)
+const locale_mimo_info_t *wlc_get_mimo_5g(u8 locale_idx)
 {
-	if (locale_idx >= ARRAYSIZE(g_mimo_5g_table)) {
+	if (locale_idx >= ARRAY_SIZE(g_mimo_5g_table)) {
 		WL_ERROR(("%s: mimo 5g index size out of range %d\n", __func__,
 			  locale_idx));
 		return NULL;
@@ -599,7 +601,8 @@ const locale_mimo_info_t *wlc_get_mimo_5g(uint8 locale_idx)
 	return g_mimo_5g_table[locale_idx];
 }
 
-wlc_cm_info_t *BCMATTACHFN(wlc_channel_mgr_attach) (wlc_info_t * wlc) {
+wlc_cm_info_t *wlc_channel_mgr_attach(wlc_info_t *wlc)
+{
 	wlc_cm_info_t *wlc_cm;
 	char country_abbrev[WLC_CNTRY_BUF_SZ];
 	const country_info_t *country;
@@ -608,14 +611,11 @@ wlc_cm_info_t *BCMATTACHFN(wlc_channel_mgr_attach) (wlc_info_t * wlc) {
 
 	WL_TRACE(("wl%d: wlc_channel_mgr_attach\n", wlc->pub->unit));
 
-	if ((wlc_cm =
-	     (wlc_cm_info_t *) MALLOC(pub->osh,
-				      sizeof(wlc_cm_info_t))) == NULL) {
-		WL_ERROR(("wl%d: %s: out of memory, malloced %d bytes",
-			  pub->unit, __func__, MALLOCED(pub->osh)));
+	wlc_cm = kzalloc(sizeof(wlc_cm_info_t), GFP_ATOMIC);
+	if (wlc_cm == NULL) {
+		WL_ERROR(("wl%d: %s: out of memory", pub->unit, __func__));
 		return NULL;
 	}
-	bzero((char *)wlc_cm, sizeof(wlc_cm_info_t));
 	wlc_cm->pub = pub;
 	wlc_cm->wlc = wlc;
 	wlc->cmi = wlc_cm;
@@ -646,55 +646,56 @@ wlc_cm_info_t *BCMATTACHFN(wlc_channel_mgr_attach) (wlc_info_t * wlc) {
 	return wlc_cm;
 }
 
-void BCMATTACHFN(wlc_channel_mgr_detach) (wlc_cm_info_t * wlc_cm) {
+void wlc_channel_mgr_detach(wlc_cm_info_t *wlc_cm)
+{
 	if (wlc_cm)
-		MFREE(wlc_cm->pub->osh, wlc_cm, sizeof(wlc_cm_info_t));
+		kfree(wlc_cm);
 }
 
-const char *wlc_channel_country_abbrev(wlc_cm_info_t * wlc_cm)
+const char *wlc_channel_country_abbrev(wlc_cm_info_t *wlc_cm)
 {
 	return wlc_cm->country_abbrev;
 }
 
-uint8 wlc_channel_locale_flags(wlc_cm_info_t * wlc_cm)
+u8 wlc_channel_locale_flags(wlc_cm_info_t *wlc_cm)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 
 	return wlc_cm->bandstate[wlc->band->bandunit].locale_flags;
 }
 
-uint8 wlc_channel_locale_flags_in_band(wlc_cm_info_t * wlc_cm, uint bandunit)
+u8 wlc_channel_locale_flags_in_band(wlc_cm_info_t *wlc_cm, uint bandunit)
 {
 	return wlc_cm->bandstate[bandunit].locale_flags;
 }
 
 /* return chanvec for a given country code and band */
 bool
-wlc_channel_get_chanvec(struct wlc_info * wlc, const char *country_abbrev,
-			int bandtype, chanvec_t * channels)
+wlc_channel_get_chanvec(struct wlc_info *wlc, const char *country_abbrev,
+			int bandtype, chanvec_t *channels)
 {
 	const country_info_t *country;
 	const locale_info_t *locale = NULL;
 
 	country = wlc_country_lookup(wlc, country_abbrev);
 	if (country == NULL)
-		return FALSE;
+		return false;
 
 	if (bandtype == WLC_BAND_2G)
 		locale = wlc_get_locale_2g(country->locale_2G);
 	else if (bandtype == WLC_BAND_5G)
 		locale = wlc_get_locale_5g(country->locale_5G);
 	if (locale == NULL)
-		return FALSE;
+		return false;
 
 	wlc_locale_get_channels(locale, channels);
-	return TRUE;
+	return true;
 }
 
 /* set the driver's current country and regulatory information using a country code
  * as the source. Lookup built in country information found with the country code.
  */
-int wlc_set_countrycode(wlc_cm_info_t * wlc_cm, const char *ccode)
+int wlc_set_countrycode(wlc_cm_info_t *wlc_cm, const char *ccode)
 {
 	char country_abbrev[WLC_CNTRY_BUF_SZ];
 	strncpy(country_abbrev, ccode, WLC_CNTRY_BUF_SZ);
@@ -702,7 +703,7 @@ int wlc_set_countrycode(wlc_cm_info_t * wlc_cm, const char *ccode)
 }
 
 int
-wlc_set_countrycode_rev(wlc_cm_info_t * wlc_cm,
+wlc_set_countrycode_rev(wlc_cm_info_t *wlc_cm,
 			const char *country_abbrev,
 			const char *ccode, int regrev)
 {
@@ -742,10 +743,10 @@ wlc_set_countrycode_rev(wlc_cm_info_t * wlc_cm,
  * as the source. Look up built in country information found with the country code.
  */
 static void
-wlc_set_country_common(wlc_cm_info_t * wlc_cm,
+wlc_set_country_common(wlc_cm_info_t *wlc_cm,
 		       const char *country_abbrev,
 		       const char *ccode, uint regrev,
-		       const country_info_t * country)
+		       const country_info_t *country)
 {
 	const locale_mimo_info_t *li_mimo;
 	const locale_info_t *locale;
@@ -769,9 +770,9 @@ wlc_set_country_common(wlc_cm_info_t * wlc_cm,
 	li_mimo = wlc_get_mimo_2g(country->locale_mimo_2G);
 	if (li_mimo && (li_mimo->flags & WLC_NO_MIMO)) {
 		wlc_set_nmode(wlc, OFF);
-		wlc->stf->no_cddstbc = TRUE;
+		wlc->stf->no_cddstbc = true;
 	} else {
-		wlc->stf->no_cddstbc = FALSE;
+		wlc->stf->no_cddstbc = false;
 		if (N_ENAB(wlc->pub) != wlc->protection->nmode_user)
 			wlc_set_nmode(wlc, wlc->protection->nmode_user);
 	}
@@ -781,9 +782,9 @@ wlc_set_country_common(wlc_cm_info_t * wlc_cm,
 	/* set or restore gmode as required by regulatory */
 	locale = wlc_get_locale_2g(country->locale_2G);
 	if (locale && (locale->flags & WLC_NO_OFDM)) {
-		wlc_set_gmode(wlc, GMODE_LEGACY_B, FALSE);
+		wlc_set_gmode(wlc, GMODE_LEGACY_B, false);
 	} else {
-		wlc_set_gmode(wlc, wlc->protection->gmode_user, FALSE);
+		wlc_set_gmode(wlc, wlc->protection->gmode_user, false);
 	}
 
 	wlc_channels_init(wlc_cm, country);
@@ -808,10 +809,10 @@ const country_info_t *wlc_country_lookup(struct wlc_info *wlc,
 	return country;
 }
 
-static const country_info_t *wlc_countrycode_map(wlc_cm_info_t * wlc_cm,
+static const country_info_t *wlc_countrycode_map(wlc_cm_info_t *wlc_cm,
 						 const char *ccode,
 						 char *mapped_ccode,
-						 uint * mapped_regrev)
+						 uint *mapped_regrev)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 	const country_info_t *country;
@@ -860,10 +861,10 @@ static const country_info_t *wlc_countrycode_map(wlc_cm_info_t * wlc_cm,
 }
 
 static int
-wlc_country_aggregate_map(wlc_cm_info_t * wlc_cm, const char *ccode,
-			  char *mapped_ccode, uint * mapped_regrev)
+wlc_country_aggregate_map(wlc_cm_info_t *wlc_cm, const char *ccode,
+			  char *mapped_ccode, uint *mapped_regrev)
 {
-	return FALSE;
+	return false;
 }
 
 /* Lookup a country info structure from a null terminated country
@@ -882,7 +883,7 @@ static const country_info_t *wlc_country_lookup_direct(const char *ccode,
 		return NULL;
 
 	/* find matched table entry from country code */
-	size = ARRAYSIZE(cntry_locales);
+	size = ARRAY_SIZE(cntry_locales);
 	for (i = 0; i < size; i++) {
 		if (strcmp(ccode, cntry_locales[i].abbrev) == 0) {
 			return &cntry_locales[i].country;
@@ -895,7 +896,7 @@ static const country_info_t *wlc_country_lookup_direct(const char *ccode,
 }
 
 static int
-wlc_channels_init(wlc_cm_info_t * wlc_cm, const country_info_t * country)
+wlc_channels_init(wlc_cm_info_t *wlc_cm, const country_info_t *country)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 	uint i, j;
@@ -943,13 +944,13 @@ wlc_channels_init(wlc_cm_info_t * wlc_cm, const country_info_t * country)
 	wlc_quiet_channels_reset(wlc_cm);
 	wlc_channels_commit(wlc_cm);
 
-	return (0);
+	return 0;
 }
 
 /* Update the radio state (enable/disable) and tx power targets
  * based on a new set of channel/regulatory information
  */
-static void wlc_channels_commit(wlc_cm_info_t * wlc_cm)
+static void wlc_channels_commit(wlc_cm_info_t *wlc_cm)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 	uint chan;
@@ -970,8 +971,8 @@ static void wlc_channels_commit(wlc_cm_info_t * wlc_cm)
 		mboolset(wlc->pub->radio_disabled, WL_RADIO_COUNTRY_DISABLE);
 		WL_ERROR(("wl%d: %s: no valid channel for \"%s\" nbands %d bandlocked %d\n", wlc->pub->unit, __func__, wlc_cm->country_abbrev, NBANDS(wlc), wlc->bandlocked));
 	} else
-	    if (mboolisset(wlc->pub->radio_disabled, WL_RADIO_COUNTRY_DISABLE))
-	{
+	    if (mboolisset(wlc->pub->radio_disabled,
+		WL_RADIO_COUNTRY_DISABLE)) {
 		/* country/locale with valid channel, clear the radio disable bit */
 		mboolclr(wlc->pub->radio_disabled, WL_RADIO_COUNTRY_DISABLE);
 	}
@@ -981,8 +982,8 @@ static void wlc_channels_commit(wlc_cm_info_t * wlc_cm)
 	 */
 	if (NBANDS(wlc) > 1 || BAND_2G(wlc->band->bandtype)) {
 		wlc_phy_chanspec_ch14_widefilter_set(wlc->band->pi,
-						     wlc_japan(wlc) ? TRUE :
-						     FALSE);
+						     wlc_japan(wlc) ? true :
+						     false);
 	}
 
 	if (wlc->pub->up && chan != INVCHANNEL) {
@@ -995,7 +996,7 @@ static void wlc_channels_commit(wlc_cm_info_t * wlc_cm)
 }
 
 /* reset the quiet channels vector to the union of the restricted and radar channel sets */
-void wlc_quiet_channels_reset(wlc_cm_info_t * wlc_cm)
+void wlc_quiet_channels_reset(wlc_cm_info_t *wlc_cm)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 	uint i, j;
@@ -1016,9 +1017,9 @@ void wlc_quiet_channels_reset(wlc_cm_info_t * wlc_cm)
 	}
 }
 
-bool wlc_quiet_chanspec(wlc_cm_info_t * wlc_cm, chanspec_t chspec)
+bool wlc_quiet_chanspec(wlc_cm_info_t *wlc_cm, chanspec_t chspec)
 {
-	return (N_ENAB(wlc_cm->wlc->pub) && CHSPEC_IS40(chspec) ?
+	return N_ENAB(wlc_cm->wlc->pub) && CHSPEC_IS40(chspec) ?
 		(isset
 		 (wlc_cm->quiet_channels.vec,
 		  LOWER_20_SB(CHSPEC_CHANNEL(chspec)))
@@ -1027,31 +1028,31 @@ bool wlc_quiet_chanspec(wlc_cm_info_t * wlc_cm, chanspec_t chspec)
 									quiet_channels.
 									vec,
 									CHSPEC_CHANNEL
-									(chspec)));
+									(chspec));
 }
 
 /* Is the channel valid for the current locale? (but don't consider channels not
  *   available due to bandlocking)
  */
-bool wlc_valid_channel20_db(wlc_cm_info_t * wlc_cm, uint val)
+bool wlc_valid_channel20_db(wlc_cm_info_t *wlc_cm, uint val)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 
-	return (VALID_CHANNEL20(wlc, val) ||
+	return VALID_CHANNEL20(wlc, val) ||
 		(!wlc->bandlocked
-		 && VALID_CHANNEL20_IN_BAND(wlc, OTHERBANDUNIT(wlc), val)));
+		 && VALID_CHANNEL20_IN_BAND(wlc, OTHERBANDUNIT(wlc), val));
 }
 
 /* Is the channel valid for the current locale and specified band? */
 bool
-wlc_valid_channel20_in_band(wlc_cm_info_t * wlc_cm, uint bandunit, uint val)
+wlc_valid_channel20_in_band(wlc_cm_info_t *wlc_cm, uint bandunit, uint val)
 {
 	return ((val < MAXCHANNEL)
 		&& isset(wlc_cm->bandstate[bandunit].valid_channels.vec, val));
 }
 
 /* Is the channel valid for the current locale and current band? */
-bool wlc_valid_channel20(wlc_cm_info_t * wlc_cm, uint val)
+bool wlc_valid_channel20(wlc_cm_info_t *wlc_cm, uint val)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 
@@ -1061,7 +1062,7 @@ bool wlc_valid_channel20(wlc_cm_info_t * wlc_cm, uint val)
 }
 
 /* Is the 40 MHz allowed for the current locale and specified band? */
-bool wlc_valid_40chanspec_in_band(wlc_cm_info_t * wlc_cm, uint bandunit)
+bool wlc_valid_40chanspec_in_band(wlc_cm_info_t *wlc_cm, uint bandunit)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 
@@ -1071,95 +1072,95 @@ bool wlc_valid_40chanspec_in_band(wlc_cm_info_t * wlc_cm, uint bandunit)
 }
 
 static void
-wlc_channel_min_txpower_limits_with_local_constraint(wlc_cm_info_t * wlc_cm,
+wlc_channel_min_txpower_limits_with_local_constraint(wlc_cm_info_t *wlc_cm,
 						     struct txpwr_limits *txpwr,
-						     uint8
+						     u8
 						     local_constraint_qdbm)
 {
 	int j;
 
 	/* CCK Rates */
 	for (j = 0; j < WL_TX_POWER_CCK_NUM; j++) {
-		txpwr->cck[j] = MIN(txpwr->cck[j], local_constraint_qdbm);
+		txpwr->cck[j] = min(txpwr->cck[j], local_constraint_qdbm);
 	}
 
 	/* 20 MHz Legacy OFDM SISO */
 	for (j = 0; j < WL_TX_POWER_OFDM_NUM; j++) {
-		txpwr->ofdm[j] = MIN(txpwr->ofdm[j], local_constraint_qdbm);
+		txpwr->ofdm[j] = min(txpwr->ofdm[j], local_constraint_qdbm);
 	}
 
 	/* 20 MHz Legacy OFDM CDD */
 	for (j = 0; j < WLC_NUM_RATES_OFDM; j++) {
 		txpwr->ofdm_cdd[j] =
-		    MIN(txpwr->ofdm_cdd[j], local_constraint_qdbm);
+		    min(txpwr->ofdm_cdd[j], local_constraint_qdbm);
 	}
 
 	/* 40 MHz Legacy OFDM SISO */
 	for (j = 0; j < WLC_NUM_RATES_OFDM; j++) {
 		txpwr->ofdm_40_siso[j] =
-		    MIN(txpwr->ofdm_40_siso[j], local_constraint_qdbm);
+		    min(txpwr->ofdm_40_siso[j], local_constraint_qdbm);
 	}
 
 	/* 40 MHz Legacy OFDM CDD */
 	for (j = 0; j < WLC_NUM_RATES_OFDM; j++) {
 		txpwr->ofdm_40_cdd[j] =
-		    MIN(txpwr->ofdm_40_cdd[j], local_constraint_qdbm);
+		    min(txpwr->ofdm_40_cdd[j], local_constraint_qdbm);
 	}
 
 	/* 20MHz MCS 0-7 SISO */
 	for (j = 0; j < WLC_NUM_RATES_MCS_1_STREAM; j++) {
 		txpwr->mcs_20_siso[j] =
-		    MIN(txpwr->mcs_20_siso[j], local_constraint_qdbm);
+		    min(txpwr->mcs_20_siso[j], local_constraint_qdbm);
 	}
 
 	/* 20MHz MCS 0-7 CDD */
 	for (j = 0; j < WLC_NUM_RATES_MCS_1_STREAM; j++) {
 		txpwr->mcs_20_cdd[j] =
-		    MIN(txpwr->mcs_20_cdd[j], local_constraint_qdbm);
+		    min(txpwr->mcs_20_cdd[j], local_constraint_qdbm);
 	}
 
 	/* 20MHz MCS 0-7 STBC */
 	for (j = 0; j < WLC_NUM_RATES_MCS_1_STREAM; j++) {
 		txpwr->mcs_20_stbc[j] =
-		    MIN(txpwr->mcs_20_stbc[j], local_constraint_qdbm);
+		    min(txpwr->mcs_20_stbc[j], local_constraint_qdbm);
 	}
 
 	/* 20MHz MCS 8-15 MIMO */
 	for (j = 0; j < WLC_NUM_RATES_MCS_2_STREAM; j++)
 		txpwr->mcs_20_mimo[j] =
-		    MIN(txpwr->mcs_20_mimo[j], local_constraint_qdbm);
+		    min(txpwr->mcs_20_mimo[j], local_constraint_qdbm);
 
 	/* 40MHz MCS 0-7 SISO */
 	for (j = 0; j < WLC_NUM_RATES_MCS_1_STREAM; j++) {
 		txpwr->mcs_40_siso[j] =
-		    MIN(txpwr->mcs_40_siso[j], local_constraint_qdbm);
+		    min(txpwr->mcs_40_siso[j], local_constraint_qdbm);
 	}
 
 	/* 40MHz MCS 0-7 CDD */
 	for (j = 0; j < WLC_NUM_RATES_MCS_1_STREAM; j++) {
 		txpwr->mcs_40_cdd[j] =
-		    MIN(txpwr->mcs_40_cdd[j], local_constraint_qdbm);
+		    min(txpwr->mcs_40_cdd[j], local_constraint_qdbm);
 	}
 
 	/* 40MHz MCS 0-7 STBC */
 	for (j = 0; j < WLC_NUM_RATES_MCS_1_STREAM; j++) {
 		txpwr->mcs_40_stbc[j] =
-		    MIN(txpwr->mcs_40_stbc[j], local_constraint_qdbm);
+		    min(txpwr->mcs_40_stbc[j], local_constraint_qdbm);
 	}
 
 	/* 40MHz MCS 8-15 MIMO */
 	for (j = 0; j < WLC_NUM_RATES_MCS_2_STREAM; j++)
 		txpwr->mcs_40_mimo[j] =
-		    MIN(txpwr->mcs_40_mimo[j], local_constraint_qdbm);
+		    min(txpwr->mcs_40_mimo[j], local_constraint_qdbm);
 
 	/* 40MHz MCS 32 */
-	txpwr->mcs32 = MIN(txpwr->mcs32, local_constraint_qdbm);
+	txpwr->mcs32 = min(txpwr->mcs32, local_constraint_qdbm);
 
 }
 
 void
-wlc_channel_set_chanspec(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
-			 uint8 local_constraint_qdbm)
+wlc_channel_set_chanspec(wlc_cm_info_t *wlc_cm, chanspec_t chanspec,
+			 u8 local_constraint_qdbm)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 	struct txpwr_limits txpwr;
@@ -1175,8 +1176,8 @@ wlc_channel_set_chanspec(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 }
 
 int
-wlc_channel_set_txpower_limit(wlc_cm_info_t * wlc_cm,
-			      uint8 local_constraint_qdbm)
+wlc_channel_set_txpower_limit(wlc_cm_info_t *wlc_cm,
+			      u8 local_constraint_qdbm)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 	struct txpwr_limits txpwr;
@@ -1192,7 +1193,7 @@ wlc_channel_set_txpower_limit(wlc_cm_info_t * wlc_cm,
 }
 
 #ifdef POWER_DBG
-static void wlc_phy_txpower_limits_dump(txpwr_limits_t * txpwr)
+static void wlc_phy_txpower_limits_dump(txpwr_limits_t *txpwr)
 {
 	int i;
 	char fraction[4][4] = { "   ", ".25", ".5 ", ".75" };
@@ -1295,8 +1296,8 @@ static void wlc_phy_txpower_limits_dump(txpwr_limits_t * txpwr)
 #endif				/* POWER_DBG */
 
 void
-wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
-		       txpwr_limits_t * txpwr)
+wlc_channel_reg_limits(wlc_cm_info_t *wlc_cm, chanspec_t chanspec,
+		       txpwr_limits_t *txpwr)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
 	uint i;
@@ -1351,11 +1352,11 @@ wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 		maxpwr = li->maxpwr[CHANNEL_POWER_IDX_2G_CCK(chan)];
 
 		maxpwr = maxpwr - delta;
-		maxpwr = MAX(maxpwr, 0);
-		maxpwr = MIN(maxpwr, conducted_max);
+		maxpwr = max(maxpwr, 0);
+		maxpwr = min(maxpwr, conducted_max);
 
 		for (i = 0; i < WLC_NUM_RATES_CCK; i++)
-			txpwr->cck[i] = (uint8) maxpwr;
+			txpwr->cck[i] = (u8) maxpwr;
 	}
 
 	/* OFDM txpwr limits for 2.4G or 5G bands */
@@ -1367,15 +1368,15 @@ wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 	}
 
 	maxpwr = maxpwr - delta;
-	maxpwr = MAX(maxpwr, 0);
-	maxpwr = MIN(maxpwr, conducted_ofdm_max);
+	maxpwr = max(maxpwr, 0);
+	maxpwr = min(maxpwr, conducted_ofdm_max);
 
 	/* Keep OFDM lmit below CCK limit */
 	if (BAND_2G(band->bandtype))
-		maxpwr = MIN(maxpwr, txpwr->cck[0]);
+		maxpwr = min_t(int, maxpwr, txpwr->cck[0]);
 
 	for (i = 0; i < WLC_NUM_RATES_OFDM; i++) {
-		txpwr->ofdm[i] = (uint8) maxpwr;
+		txpwr->ofdm[i] = (u8) maxpwr;
 	}
 
 	for (i = 0; i < WLC_NUM_RATES_OFDM; i++) {
@@ -1386,7 +1387,7 @@ wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 		 */
 		txpwr->ofdm_40_siso[i] = 0;
 
-		txpwr->ofdm_cdd[i] = (uint8) maxpwr;
+		txpwr->ofdm_cdd[i] = (u8) maxpwr;
 
 		txpwr->ofdm_40_cdd[i] = 0;
 	}
@@ -1409,9 +1410,9 @@ wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 	maxpwr40 = li_mimo->maxpwr40[maxpwr_idx];
 
 	maxpwr20 = maxpwr20 - delta;
-	maxpwr20 = MAX(maxpwr20, 0);
+	maxpwr20 = max(maxpwr20, 0);
 	maxpwr40 = maxpwr40 - delta;
-	maxpwr40 = MAX(maxpwr40, 0);
+	maxpwr40 = max(maxpwr40, 0);
 
 	/* Fill in the MCS 0-7 (SISO) rates */
 	for (i = 0; i < WLC_NUM_RATES_MCS_1_STREAM; i++) {
@@ -1425,8 +1426,8 @@ wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 
 	/* Fill in the MCS 0-7 CDD rates */
 	for (i = 0; i < WLC_NUM_RATES_MCS_1_STREAM; i++) {
-		txpwr->mcs_20_cdd[i] = (uint8) maxpwr20;
-		txpwr->mcs_40_cdd[i] = (uint8) maxpwr40;
+		txpwr->mcs_20_cdd[i] = (u8) maxpwr20;
+		txpwr->mcs_40_cdd[i] = (u8) maxpwr40;
 	}
 
 	/* These locales have SISO expressed in the table and override CDD later */
@@ -1441,8 +1442,8 @@ wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 		}
 
 		for (i = 0; i < WLC_NUM_RATES_MCS_1_STREAM; i++) {
-			txpwr->mcs_20_siso[i] = (uint8) maxpwr20;
-			txpwr->mcs_40_siso[i] = (uint8) maxpwr40;
+			txpwr->mcs_20_siso[i] = (u8) maxpwr20;
+			txpwr->mcs_40_siso[i] = (u8) maxpwr40;
 		}
 	}
 
@@ -1454,12 +1455,12 @@ wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 
 	/* Fill in the MCS 8-15 SDM rates */
 	for (i = 0; i < WLC_NUM_RATES_MCS_2_STREAM; i++) {
-		txpwr->mcs_20_mimo[i] = (uint8) maxpwr20;
-		txpwr->mcs_40_mimo[i] = (uint8) maxpwr40;
+		txpwr->mcs_20_mimo[i] = (u8) maxpwr20;
+		txpwr->mcs_40_mimo[i] = (u8) maxpwr40;
 	}
 
 	/* Fill in MCS32 */
-	txpwr->mcs32 = (uint8) maxpwr40;
+	txpwr->mcs32 = (u8) maxpwr40;
 
 	for (i = 0, j = 0; i < WLC_NUM_RATES_OFDM; i++, j++) {
 		if (txpwr->ofdm_40_cdd[i] == 0)
@@ -1472,7 +1473,7 @@ wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 	}
 
 	/* Copy the 40 MHZ MCS 0-7 CDD value to the 40 MHZ MCS 0-7 SISO value if it wasn't
-	 * provided explicitly. 
+	 * provided explicitly.
 	 */
 
 	for (i = 0; i < WLC_NUM_RATES_MCS_1_STREAM; i++) {
@@ -1507,8 +1508,8 @@ wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm, chanspec_t chanspec,
 	return;
 }
 
-/* Returns TRUE if currently set country is Japan or variant */
-bool wlc_japan(struct wlc_info * wlc)
+/* Returns true if currently set country is Japan or variant */
+bool wlc_japan(struct wlc_info *wlc)
 {
 	return wlc_japan_ccode(wlc->cmi->country_abbrev);
 }
@@ -1525,50 +1526,50 @@ static bool wlc_japan_ccode(const char *ccode)
  * are valid 20MZH channels in this locale and they are also a legal HT combination
  */
 static bool
-wlc_valid_chanspec_ext(wlc_cm_info_t * wlc_cm, chanspec_t chspec, bool dualband)
+wlc_valid_chanspec_ext(wlc_cm_info_t *wlc_cm, chanspec_t chspec, bool dualband)
 {
 	wlc_info_t *wlc = wlc_cm->wlc;
-	uint8 channel = CHSPEC_CHANNEL(chspec);
+	u8 channel = CHSPEC_CHANNEL(chspec);
 
 	/* check the chanspec */
 	if (wf_chspec_malformed(chspec)) {
 		WL_ERROR(("wl%d: malformed chanspec 0x%x\n", wlc->pub->unit,
 			  chspec));
 		ASSERT(0);
-		return FALSE;
+		return false;
 	}
 
 	if (CHANNEL_BANDUNIT(wlc_cm->wlc, channel) !=
 	    CHSPEC_WLCBANDUNIT(chspec))
-		return FALSE;
+		return false;
 
 	/* Check a 20Mhz channel */
 	if (CHSPEC_IS20(chspec)) {
 		if (dualband)
-			return (VALID_CHANNEL20_DB(wlc_cm->wlc, channel));
+			return VALID_CHANNEL20_DB(wlc_cm->wlc, channel);
 		else
-			return (VALID_CHANNEL20(wlc_cm->wlc, channel));
+			return VALID_CHANNEL20(wlc_cm->wlc, channel);
 	}
 #ifdef SUPPORT_40MHZ
 	/* We know we are now checking a 40MHZ channel, so we should only be here
 	 * for NPHYS
 	 */
 	if (WLCISNPHY(wlc->band) || WLCISSSLPNPHY(wlc->band)) {
-		uint8 upper_sideband = 0, idx;
-		uint8 num_ch20_entries =
+		u8 upper_sideband = 0, idx;
+		u8 num_ch20_entries =
 		    sizeof(chan20_info) / sizeof(struct chan20_info);
 
 		if (!VALID_40CHANSPEC_IN_BAND(wlc, CHSPEC_WLCBANDUNIT(chspec)))
-			return FALSE;
+			return false;
 
 		if (dualband) {
 			if (!VALID_CHANNEL20_DB(wlc, LOWER_20_SB(channel)) ||
 			    !VALID_CHANNEL20_DB(wlc, UPPER_20_SB(channel)))
-				return FALSE;
+				return false;
 		} else {
 			if (!VALID_CHANNEL20(wlc, LOWER_20_SB(channel)) ||
 			    !VALID_CHANNEL20(wlc, UPPER_20_SB(channel)))
-				return FALSE;
+				return false;
 		}
 
 		/* find the lower sideband info in the sideband array */
@@ -1579,20 +1580,20 @@ wlc_valid_chanspec_ext(wlc_cm_info_t * wlc_cm, chanspec_t chspec, bool dualband)
 		/* check that the lower sideband allows an upper sideband */
 		if ((upper_sideband & (CH_UPPER_SB | CH_EWA_VALID)) ==
 		    (CH_UPPER_SB | CH_EWA_VALID))
-			return TRUE;
-		return FALSE;
+			return true;
+		return false;
 	}
 #endif				/* 40 MHZ */
 
-	return FALSE;
+	return false;
 }
 
-bool wlc_valid_chanspec(wlc_cm_info_t * wlc_cm, chanspec_t chspec)
+bool wlc_valid_chanspec(wlc_cm_info_t *wlc_cm, chanspec_t chspec)
 {
-	return wlc_valid_chanspec_ext(wlc_cm, chspec, FALSE);
+	return wlc_valid_chanspec_ext(wlc_cm, chspec, false);
 }
 
-bool wlc_valid_chanspec_db(wlc_cm_info_t * wlc_cm, chanspec_t chspec)
+bool wlc_valid_chanspec_db(wlc_cm_info_t *wlc_cm, chanspec_t chspec)
 {
-	return wlc_valid_chanspec_ext(wlc_cm, chspec, TRUE);
+	return wlc_valid_chanspec_ext(wlc_cm, chspec, true);
 }

@@ -47,21 +47,21 @@ struct wlc_info;
 
 /* macro to get 5 GHz channel group index for tx power */
 #define CHANNEL_POWER_IDX_5G(c) \
-	(((c) < 52) ? 0 : (((c) < 62) ? 1 :(((c) < 100) ? 2 : (((c) < 149) ? 3 : 4))))
+	(((c) < 52) ? 0 : (((c) < 62) ? 1 : (((c) < 100) ? 2 : (((c) < 149) ? 3 : 4))))
 
 #define WLC_MAXPWR_TBL_SIZE		6	/* max of BAND_5G_PWR_LVLS and 6 for 2.4 GHz */
 #define WLC_MAXPWR_MIMO_TBL_SIZE	14	/* max of BAND_5G_PWR_LVLS and 14 for 2.4 GHz */
 
 /* locale channel and power info. */
 typedef struct {
-	uint32 valid_channels;
-	uint8 radar_channels;	/* List of radar sensitive channels */
-	uint8 restricted_channels;	/* List of channels used only if APs are detected */
-	int8 maxpwr[WLC_MAXPWR_TBL_SIZE];	/* Max tx pwr in qdBm for each sub-band */
-	int8 pub_maxpwr[BAND_5G_PWR_LVLS];	/* Country IE advertised max tx pwr in dBm
+	u32 valid_channels;
+	u8 radar_channels;	/* List of radar sensitive channels */
+	u8 restricted_channels;	/* List of channels used only if APs are detected */
+	s8 maxpwr[WLC_MAXPWR_TBL_SIZE];	/* Max tx pwr in qdBm for each sub-band */
+	s8 pub_maxpwr[BAND_5G_PWR_LVLS];	/* Country IE advertised max tx pwr in dBm
 						 * per sub-band
 						 */
-	uint8 flags;
+	u8 flags;
 } locale_info_t;
 
 /* bits for locale_info flags */
@@ -82,9 +82,9 @@ typedef struct {
  * by sub-band for 5 GHz limits using CHANNEL_POWER_IDX_5G(channel)
  */
 typedef struct {
-	int8 maxpwr20[WLC_MAXPWR_MIMO_TBL_SIZE];	/* tx 20 MHz power limits, qdBm units */
-	int8 maxpwr40[WLC_MAXPWR_MIMO_TBL_SIZE];	/* tx 40 MHz power limits, qdBm units */
-	uint8 flags;
+	s8 maxpwr20[WLC_MAXPWR_MIMO_TBL_SIZE];	/* tx 20 MHz power limits, qdBm units */
+	s8 maxpwr40[WLC_MAXPWR_MIMO_TBL_SIZE];	/* tx 40 MHz power limits, qdBm units */
+	u8 flags;
 } locale_mimo_info_t;
 
 extern const chanvec_t chanvec_all_2G;
@@ -94,10 +94,10 @@ extern const chanvec_t chanvec_all_5G;
  * Country names and abbreviations with locale defined from ISO 3166
  */
 struct country_info {
-	const uint8 locale_2G;	/* 2.4G band locale */
-	const uint8 locale_5G;	/* 5G band locale */
-	const uint8 locale_mimo_2G;	/* 2.4G mimo info */
-	const uint8 locale_mimo_5G;	/* 5G mimo info */
+	const u8 locale_2G;	/* 2.4G band locale */
+	const u8 locale_5G;	/* 5G band locale */
+	const u8 locale_mimo_2G;	/* 2.4G mimo info */
+	const u8 locale_mimo_5G;	/* 5G mimo info */
 };
 
 typedef struct country_info country_info_t;
@@ -105,20 +105,20 @@ typedef struct country_info country_info_t;
 typedef struct wlc_cm_info wlc_cm_info_t;
 
 extern wlc_cm_info_t *wlc_channel_mgr_attach(struct wlc_info *wlc);
-extern void wlc_channel_mgr_detach(wlc_cm_info_t * wlc_cm);
+extern void wlc_channel_mgr_detach(wlc_cm_info_t *wlc_cm);
 
-extern int wlc_set_countrycode(wlc_cm_info_t * wlc_cm, const char *ccode);
-extern int wlc_set_countrycode_rev(wlc_cm_info_t * wlc_cm,
+extern int wlc_set_countrycode(wlc_cm_info_t *wlc_cm, const char *ccode);
+extern int wlc_set_countrycode_rev(wlc_cm_info_t *wlc_cm,
 				   const char *country_abbrev,
 				   const char *ccode, int regrev);
 
-extern const char *wlc_channel_country_abbrev(wlc_cm_info_t * wlc_cm);
-extern uint8 wlc_channel_locale_flags(wlc_cm_info_t * wlc_cm);
-extern uint8 wlc_channel_locale_flags_in_band(wlc_cm_info_t * wlc_cm,
+extern const char *wlc_channel_country_abbrev(wlc_cm_info_t *wlc_cm);
+extern u8 wlc_channel_locale_flags(wlc_cm_info_t *wlc_cm);
+extern u8 wlc_channel_locale_flags_in_band(wlc_cm_info_t *wlc_cm,
 					      uint bandunit);
 
-extern void wlc_quiet_channels_reset(wlc_cm_info_t * wlc_cm);
-extern bool wlc_quiet_chanspec(wlc_cm_info_t * wlc_cm, chanspec_t chspec);
+extern void wlc_quiet_channels_reset(wlc_cm_info_t *wlc_cm);
+extern bool wlc_quiet_chanspec(wlc_cm_info_t *wlc_cm, chanspec_t chspec);
 
 #define	VALID_CHANNEL20_DB(wlc, val) wlc_valid_channel20_db((wlc)->cmi, val)
 #define	VALID_CHANNEL20_IN_BAND(wlc, bandunit, val) \
@@ -126,34 +126,34 @@ extern bool wlc_quiet_chanspec(wlc_cm_info_t * wlc_cm, chanspec_t chspec);
 #define	VALID_CHANNEL20(wlc, val) wlc_valid_channel20((wlc)->cmi, val)
 #define VALID_40CHANSPEC_IN_BAND(wlc, bandunit) wlc_valid_40chanspec_in_band((wlc)->cmi, bandunit)
 
-extern bool wlc_valid_chanspec(wlc_cm_info_t * wlc_cm, chanspec_t chspec);
-extern bool wlc_valid_chanspec_db(wlc_cm_info_t * wlc_cm, chanspec_t chspec);
-extern bool wlc_valid_channel20_db(wlc_cm_info_t * wlc_cm, uint val);
-extern bool wlc_valid_channel20_in_band(wlc_cm_info_t * wlc_cm, uint bandunit,
+extern bool wlc_valid_chanspec(wlc_cm_info_t *wlc_cm, chanspec_t chspec);
+extern bool wlc_valid_chanspec_db(wlc_cm_info_t *wlc_cm, chanspec_t chspec);
+extern bool wlc_valid_channel20_db(wlc_cm_info_t *wlc_cm, uint val);
+extern bool wlc_valid_channel20_in_band(wlc_cm_info_t *wlc_cm, uint bandunit,
 					uint val);
-extern bool wlc_valid_channel20(wlc_cm_info_t * wlc_cm, uint val);
-extern bool wlc_valid_40chanspec_in_band(wlc_cm_info_t * wlc_cm, uint bandunit);
+extern bool wlc_valid_channel20(wlc_cm_info_t *wlc_cm, uint val);
+extern bool wlc_valid_40chanspec_in_band(wlc_cm_info_t *wlc_cm, uint bandunit);
 
-extern void wlc_channel_reg_limits(wlc_cm_info_t * wlc_cm,
+extern void wlc_channel_reg_limits(wlc_cm_info_t *wlc_cm,
 				   chanspec_t chanspec,
 				   struct txpwr_limits *txpwr);
-extern void wlc_channel_set_chanspec(wlc_cm_info_t * wlc_cm,
+extern void wlc_channel_set_chanspec(wlc_cm_info_t *wlc_cm,
 				     chanspec_t chanspec,
-				     uint8 local_constraint_qdbm);
-extern int wlc_channel_set_txpower_limit(wlc_cm_info_t * wlc_cm,
-					 uint8 local_constraint_qdbm);
+				     u8 local_constraint_qdbm);
+extern int wlc_channel_set_txpower_limit(wlc_cm_info_t *wlc_cm,
+					 u8 local_constraint_qdbm);
 
 extern const country_info_t *wlc_country_lookup(struct wlc_info *wlc,
 						const char *ccode);
-extern void wlc_locale_get_channels(const locale_info_t * locale,
-				    chanvec_t * valid_channels);
-extern const locale_info_t *wlc_get_locale_2g(uint8 locale_idx);
-extern const locale_info_t *wlc_get_locale_5g(uint8 locale_idx);
+extern void wlc_locale_get_channels(const locale_info_t *locale,
+				    chanvec_t *valid_channels);
+extern const locale_info_t *wlc_get_locale_2g(u8 locale_idx);
+extern const locale_info_t *wlc_get_locale_5g(u8 locale_idx);
 extern bool wlc_japan(struct wlc_info *wlc);
 
-extern uint8 wlc_get_regclass(wlc_cm_info_t * wlc_cm, chanspec_t chanspec);
+extern u8 wlc_get_regclass(wlc_cm_info_t *wlc_cm, chanspec_t chanspec);
 extern bool wlc_channel_get_chanvec(struct wlc_info *wlc,
 				    const char *country_abbrev, int bandtype,
-				    chanvec_t * channels);
+				    chanvec_t *channels);
 
 #endif				/* _WLC_CHANNEL_H */

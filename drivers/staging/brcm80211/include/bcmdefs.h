@@ -17,39 +17,25 @@
 #ifndef	_bcmdefs_h_
 #define	_bcmdefs_h_
 
-/*
- * One doesn't need to include this file explicitly, gets included automatically if
- * typedefs.h is included.
- */
+#define	SI_BUS			0
+#define	PCI_BUS			1
+#define	PCMCIA_BUS		2
+#define SDIO_BUS		3
+#define JTAG_BUS		4
+#define USB_BUS			5
+#define SPI_BUS			6
 
-/* Use BCM_REFERENCE to suppress warnings about intentionally-unused function
- * arguments or local variables.
- */
-#define BCM_REFERENCE(data)	((void)data)
 
-/* Reclaiming text and data :
- * The following macros specify special linker sections that can be reclaimed
- * after a system is considered 'up'.
- * BCMATTACHFN is also used for detach functions (it's not worth having a BCMDETACHFN,
- * as in most cases, the attach function calls the detach function to clean up on error).
- */
+#ifndef OFF
+#define	OFF	0
+#endif
 
-#define bcmreclaimed 		0
-#define BCMATTACHDATA(_data)	_data
-#define BCMATTACHFN(_fn)	_fn
-#define BCMPREATTACHDATA(_data)	_data
-#define BCMPREATTACHFN(_fn)	_fn
-#define BCMINITDATA(_data)	_data
-#define BCMINITFN(_fn)		_fn
-#define BCMUNINITFN(_fn)	_fn
-#define	BCMNMIATTACHFN(_fn)	_fn
-#define	BCMNMIATTACHDATA(_data)	_data
-#define BCMOVERLAY0DATA(_sym)	_sym
-#define BCMOVERLAY0FN(_fn)	_fn
-#define BCMOVERLAY1DATA(_sym)	_sym
-#define BCMOVERLAY1FN(_fn)	_fn
-#define BCMOVERLAYERRFN(_fn)	_fn
-#define CONST	const
+#ifndef ON
+#define	ON	1		/* ON = 1 */
+#endif
+
+#define	AUTO	(-1)		/* Auto = -1 */
+
 #ifdef mips
 #define BCMFASTPATH		__attribute__ ((__section__(".text.fastpath")))
 #else
@@ -57,15 +43,7 @@
 #endif
 
 /* Put some library data/code into ROM to reduce RAM requirements */
-#define BCMROMDATA(_data)	_data
-#define BCMROMDAT_NAME(_data)	_data
 #define BCMROMFN(_fn)		_fn
-#define BCMROMFN_NAME(_fn)	_fn
-#define STATIC	static
-#define BCMROMDAT_ARYSIZ(data)	ARRAYSIZE(data)
-#define BCMROMDAT_SIZEOF(data)	sizeof(data)
-#define BCMROMDAT_APATCH(data)
-#define BCMROMDAT_SPATCH(data)
 
 /* Bus types */
 #define	SI_BUS			0	/* SOC Interconnect */
@@ -118,8 +96,8 @@
 
 #ifdef BCMDMA64OSL
 typedef struct {
-	uint32 loaddr;
-	uint32 hiaddr;
+	u32 loaddr;
+	u32 hiaddr;
 } dma64addr_t;
 
 typedef dma64addr_t dmaaddr_t;
@@ -148,7 +126,7 @@ typedef unsigned long dmaaddr_t;
 /* One physical DMA segment */
 typedef struct {
 	dmaaddr_t addr;
-	uint32 length;
+	u32 length;
 } hnddma_seg_t;
 
 #define MAX_DMA_SEGS 4
@@ -214,11 +192,9 @@ typedef struct {
 
 /* define BCMSMALL to remove misc features for memory-constrained environments */
 #define	BCMSPACE
-#define bcmspace	TRUE	/* if (bcmspace) code is retained */
+#define bcmspace	true	/* if (bcmspace) code is retained */
 
 /* Max. nvram variable table size */
 #define	MAXSZ_NVRAM_VARS	4096
-
-#define LOCATOR_EXTERN static
 
 #endif				/* _bcmdefs_h_ */

@@ -19,15 +19,14 @@
 
 #ifndef _LANGUAGE_ASSEMBLY
 
-#include <typedefs.h>
 #include <bcmdefs.h>
 
 struct nvram_header {
-	uint32 magic;
-	uint32 len;
-	uint32 crc_ver_init;	/* 0:7 crc, 8:15 ver, 16:31 sdram_init */
-	uint32 config_refresh;	/* 0:15 sdram_config, 16:31 sdram_refresh */
-	uint32 config_ncdl;	/* ncdl values for memc */
+	u32 magic;
+	u32 len;
+	u32 crc_ver_init;	/* 0:7 crc, 8:15 ver, 16:31 sdram_init */
+	u32 config_refresh;	/* 0:15 sdram_config, 16:31 sdram_refresh */
+	u32 config_ncdl;	/* ncdl values for memc */
 };
 
 struct nvram_tuple {
@@ -75,7 +74,7 @@ extern char *nvram_get(const char *name);
  * Read the reset GPIO value from the nvram and set the GPIO
  * as input
  */
-extern int BCMINITFN(nvram_resetgpio_init) (void *sih);
+extern int nvram_resetgpio_init(void *sih);
 
 /*
  * Get the value of an NVRAM variable.
@@ -88,26 +87,26 @@ extern int BCMINITFN(nvram_resetgpio_init) (void *sih);
  * Match an NVRAM variable.
  * @param	name	name of variable to match
  * @param	match	value to compare against value of variable
- * @return	TRUE if variable is defined and its value is string equal
- *		to match or FALSE otherwise
+ * @return	true if variable is defined and its value is string equal
+ *		to match or false otherwise
  */
-static INLINE int nvram_match(char *name, char *match)
+static inline int nvram_match(char *name, char *match)
 {
 	const char *value = nvram_get(name);
-	return (value && !strcmp(value, match));
+	return value && !strcmp(value, match);
 }
 
 /*
  * Inversely match an NVRAM variable.
  * @param	name	name of variable to match
  * @param	match	value to compare against value of variable
- * @return	TRUE if variable is defined and its value is not string
- *		equal to invmatch or FALSE otherwise
+ * @return	true if variable is defined and its value is not string
+ *		equal to invmatch or false otherwise
  */
-static INLINE int nvram_invmatch(char *name, char *invmatch)
+static inline int nvram_invmatch(char *name, char *invmatch)
 {
 	const char *value = nvram_get(name);
-	return (value && strcmp(value, invmatch));
+	return value && strcmp(value, invmatch);
 }
 
 /*
@@ -150,7 +149,7 @@ extern int nvram_getall(char *nvram_buf, int count);
  * returns the crc value of the nvram
  * @param	nvh	nvram header pointer
  */
-uint8 nvram_calc_crc(struct nvram_header *nvh);
+u8 nvram_calc_crc(struct nvram_header *nvh);
 
 #endif				/* _LANGUAGE_ASSEMBLY */
 

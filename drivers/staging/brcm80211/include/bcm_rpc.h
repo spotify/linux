@@ -17,17 +17,16 @@
 #ifndef _BCM_RPC_H_
 #define _BCM_RPC_H_
 
-#include <typedefs.h>
 #include <rpc_osl.h>
 
 typedef struct rpc_info rpc_info_t;
 typedef struct rpc_buf rpc_buf_t;
 struct rpc_transport_info;
-typedef void (*rpc_dispatch_cb_t) (void *ctx, struct rpc_buf * buf);
+typedef void (*rpc_dispatch_cb_t) (void *ctx, struct rpc_buf *buf);
 typedef void (*rpc_resync_cb_t) (void *ctx);
 typedef void (*rpc_down_cb_t) (void *ctx);
-typedef void (*rpc_txdone_cb_t) (void *ctx, struct rpc_buf * buf);
-extern struct rpc_info *bcm_rpc_attach(void *pdev, osl_t * osh,
+typedef void (*rpc_txdone_cb_t) (void *ctx, struct rpc_buf *buf);
+extern struct rpc_info *bcm_rpc_attach(void *pdev, osl_t *osh,
 				       struct rpc_transport_info *rpc_th);
 
 extern void bcm_rpc_detach(struct rpc_info *rpc);
@@ -65,16 +64,16 @@ extern uint bcm_rpc_buf_header_len(struct rpc_info *rpci);
 #define RPC_PKTLOG_SIZE		50	/* Depth of the history */
 #define RPC_PKTLOG_RD_LEN	3
 #define RPC_PKTLOG_DUMP_SIZE	150	/* dump size should be more than the product of above two */
-extern int bcm_rpc_pktlog_get(struct rpc_info *rpci, uint32 * buf,
+extern int bcm_rpc_pktlog_get(struct rpc_info *rpci, u32 *buf,
 			      uint buf_size, bool send);
-extern int bcm_rpc_dump(rpc_info_t * rpci, struct bcmstrbuf *b);
+extern int bcm_rpc_dump(rpc_info_t *rpci, struct bcmstrbuf *b);
 
 /* HIGH/BMAC: bit 15-8: RPC module, bit 7-0: TP module */
 #define RPC_ERROR_VAL	0x0001
 #define RPC_TRACE_VAL	0x0002
 #define RPC_PKTTRACE_VAL 0x0004
 #define RPC_PKTLOG_VAL	0x0008
-extern void bcm_rpc_msglevel_set(struct rpc_info *rpci, uint16 msglevel,
+extern void bcm_rpc_msglevel_set(struct rpc_info *rpci, u16 msglevel,
 				 bool high_low);
 
 #endif				/* _BCM_RPC_H_ */

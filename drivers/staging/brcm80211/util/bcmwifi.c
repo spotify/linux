@@ -13,166 +13,37 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#include <typedefs.h>
-
-#include <osl.h>
+#include <linux/ctype.h>
+#include <linux/kernel.h>
+#include <bcmdefs.h>
 #include <bcmutils.h>
-#define strtoul(nptr, endptr, base) bcm_strtoul((nptr), (endptr), (base))
-#define tolower(c) (bcm_isupper((c)) ? ((c) + 'a' - 'A') : (c))
 #include <bcmwifi.h>
-
-/* Chanspec ASCII representation:
- * <channel><band><bandwidth><ctl-sideband>
- *   digit   [AB]     [N]        [UL]
- *
- * <channel>: channel number of the 10MHz or 20MHz channel,
- *	or control sideband channel of 40MHz channel.
- * <band>: A for 5GHz, B for 2.4GHz
- * <bandwidth>: N for 10MHz, nothing for 20MHz or 40MHz
- *	(ctl-sideband spec implies 40MHz)
- * <ctl-sideband>: U for upper, L for lower
- *
- * <band> may be omitted on input, and will be assumed to be
- * 2.4GHz if channel number <= 14.
- *
- * Examples:
- *	8  ->  2.4GHz channel 8, 20MHz
- *	8b ->  2.4GHz channel 8, 20MHz
- *	8l ->  2.4GHz channel 8, 40MHz, lower ctl sideband
- *	8a ->  5GHz channel 8 (low 5 GHz band), 20MHz
- *	36 ->  5GHz channel 36, 20MHz
- *	36l -> 5GHz channel 36, 40MHz, lower ctl sideband
- *	40u -> 5GHz channel 40, 40MHz, upper ctl sideband
- *	180n -> channel 180, 10MHz
- */
-
-/* given a chanspec and a string buffer, format the chanspec as a
- * string, and return the original pointer a.
- * Min buffer length must be CHANSPEC_STR_LEN.
- * On error return NULL
- */
-char *wf_chspec_ntoa(chanspec_t chspec, char *buf)
-{
-	const char *band, *bw, *sb;
-	uint channel;
-
-	band = "";
-	bw = "";
-	sb = "";
-	channel = CHSPEC_CHANNEL(chspec);
-	/* check for non-default band spec */
-	if ((CHSPEC_IS2G(chspec) && channel > CH_MAX_2G_CHANNEL) ||
-	    (CHSPEC_IS5G(chspec) && channel <= CH_MAX_2G_CHANNEL))
-		band = (CHSPEC_IS2G(chspec)) ? "b" : "a";
-	if (CHSPEC_IS40(chspec)) {
-		if (CHSPEC_SB_UPPER(chspec)) {
-			sb = "u";
-			channel += CH_10MHZ_APART;
-		} else {
-			sb = "l";
-			channel -= CH_10MHZ_APART;
-		}
-	} else if (CHSPEC_IS10(chspec)) {
-		bw = "n";
-	}
-
-	/* Outputs a max of 6 chars including '\0'  */
-	snprintf(buf, 6, "%d%s%s%s", channel, band, bw, sb);
-	return (buf);
-}
-
-/* given a chanspec string, convert to a chanspec.
- * On error return 0
- */
-chanspec_t wf_chspec_aton(char *a)
-{
-	char *endp = NULL;
-	uint channel, band, bw, ctl_sb;
-	char c;
-
-	channel = strtoul(a, &endp, 10);
-
-	/* check for no digits parsed */
-	if (endp == a)
-		return 0;
-
-	if (channel > MAXCHANNEL)
-		return 0;
-
-	band =
-	    ((channel <=
-	      CH_MAX_2G_CHANNEL) ? WL_CHANSPEC_BAND_2G : WL_CHANSPEC_BAND_5G);
-	bw = WL_CHANSPEC_BW_20;
-	ctl_sb = WL_CHANSPEC_CTL_SB_NONE;
-
-	a = endp;
-
-	c = tolower(a[0]);
-	if (c == '\0')
-		goto done;
-
-	/* parse the optional ['A' | 'B'] band spec */
-	if (c == 'a' || c == 'b') {
-		band = (c == 'a') ? WL_CHANSPEC_BAND_5G : WL_CHANSPEC_BAND_2G;
-		a++;
-		c = tolower(a[0]);
-		if (c == '\0')
-			goto done;
-	}
-
-	/* parse bandwidth 'N' (10MHz) or 40MHz ctl sideband ['L' | 'U'] */
-	if (c == 'n') {
-		bw = WL_CHANSPEC_BW_10;
-	} else if (c == 'l') {
-		bw = WL_CHANSPEC_BW_40;
-		ctl_sb = WL_CHANSPEC_CTL_SB_LOWER;
-		/* adjust channel to center of 40MHz band */
-		if (channel <= (MAXCHANNEL - CH_20MHZ_APART))
-			channel += CH_10MHZ_APART;
-		else
-			return 0;
-	} else if (c == 'u') {
-		bw = WL_CHANSPEC_BW_40;
-		ctl_sb = WL_CHANSPEC_CTL_SB_UPPER;
-		/* adjust channel to center of 40MHz band */
-		if (channel > CH_20MHZ_APART)
-			channel -= CH_10MHZ_APART;
-		else
-			return 0;
-	} else {
-		return 0;
-	}
-
- done:
-	return (channel | band | bw | ctl_sb);
-}
 
 /*
  * Verify the chanspec is using a legal set of parameters, i.e. that the
  * chanspec specified a band, bw, ctl_sb and channel and that the
  * combination could be legal given any set of circumstances.
- * RETURNS: TRUE is the chanspec is malformed, false if it looks good.
+ * RETURNS: true is the chanspec is malformed, false if it looks good.
  */
 bool wf_chspec_malformed(chanspec_t chanspec)
 {
 	/* must be 2G or 5G band */
 	if (!CHSPEC_IS5G(chanspec) && !CHSPEC_IS2G(chanspec))
-		return TRUE;
+		return true;
 	/* must be 20 or 40 bandwidth */
 	if (!CHSPEC_IS40(chanspec) && !CHSPEC_IS20(chanspec))
-		return TRUE;
+		return true;
 
 	/* 20MHZ b/w must have no ctl sb, 40 must have a ctl sb */
 	if (CHSPEC_IS20(chanspec)) {
 		if (!CHSPEC_SB_NONE(chanspec))
-			return TRUE;
+			return true;
 	} else {
 		if (!CHSPEC_SB_UPPER(chanspec) && !CHSPEC_SB_LOWER(chanspec))
-			return TRUE;
+			return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
 /*
@@ -180,9 +51,9 @@ bool wf_chspec_malformed(chanspec_t chanspec)
  * channels this is just the channel number, for 40MHZ channels it is the upper or lowre 20MHZ
  * sideband depending on the chanspec selected
  */
-uint8 wf_chspec_ctlchan(chanspec_t chspec)
+u8 wf_chspec_ctlchan(chanspec_t chspec)
 {
-	uint8 ctl_chan;
+	u8 ctl_chan;
 
 	/* Is there a sideband ? */
 	if (CHSPEC_CTL_SB(chspec) == WL_CHANSPEC_CTL_SB_NONE) {
@@ -210,7 +81,7 @@ uint8 wf_chspec_ctlchan(chanspec_t chspec)
 chanspec_t wf_chspec_ctlchspec(chanspec_t chspec)
 {
 	chanspec_t ctl_chspec = 0;
-	uint8 channel;
+	u8 channel;
 
 	ASSERT(!wf_chspec_malformed(chspec));
 

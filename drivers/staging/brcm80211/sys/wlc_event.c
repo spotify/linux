@@ -14,12 +14,12 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <typedefs.h>
+#include <linux/kernel.h>
+#include <bcmdefs.h>
+#include <linuxver.h>
 #include <bcmutils.h>
 #include <siutils.h>
-#include <bcmendian.h>
 #include <wlioctl.h>
-#include <wl_dbg.h>
 #include <wlc_cfg.h>
 #include <wlc_pub.h>
 #include <wlc_key.h>
@@ -47,98 +47,98 @@ struct wlc_eventq {
 	bool workpending;
 	struct wl_timer *timer;
 	wlc_eventq_cb_t cb;
-	uint8 event_inds_mask[ROUNDUP(WLC_E_LAST, NBBY) / NBBY];
+	u8 event_inds_mask[broken_roundup(WLC_E_LAST, NBBY) / NBBY];
 };
 
 /*
  * Export functions
  */
-wlc_eventq_t *BCMATTACHFN(wlc_eventq_attach) (wlc_pub_t * pub,
-					      struct wlc_info * wlc, void *wl,
-					      wlc_eventq_cb_t cb) {
+wlc_eventq_t *wlc_eventq_attach(wlc_pub_t *pub, struct wlc_info *wlc, void *wl,
+				wlc_eventq_cb_t cb)
+{
 	wlc_eventq_t *eq;
 
-	eq = (wlc_eventq_t *) MALLOC(pub->osh, sizeof(wlc_eventq_t));
+	eq = kzalloc(sizeof(wlc_eventq_t), GFP_ATOMIC);
 	if (eq == NULL)
 		return NULL;
-
-	bzero(eq, sizeof(wlc_eventq_t));
 
 	eq->cb = cb;
 	eq->wlc = wlc;
 	eq->wl = wl;
 	eq->pub = pub;
 
-	if (!(eq->timer = wl_init_timer(eq->wl, wlc_timer_cb, eq, "eventq"))) {
+	eq->timer = wl_init_timer(eq->wl, wlc_timer_cb, eq, "eventq");
+	if (!eq->timer) {
 		WL_ERROR(("wl%d: wlc_eventq_attach: timer failed\n",
 			  pub->unit));
-		MFREE(eq->pub->osh, eq, sizeof(wlc_eventq_t));
+		kfree(eq);
 		return NULL;
 	}
 
 	return eq;
 }
 
-int BCMATTACHFN(wlc_eventq_detach) (wlc_eventq_t * eq) {
+int wlc_eventq_detach(wlc_eventq_t *eq)
+{
 	/* Clean up pending events */
 	wlc_eventq_down(eq);
 
 	if (eq->timer) {
 		if (eq->tpending) {
 			wl_del_timer(eq->wl, eq->timer);
-			eq->tpending = FALSE;
+			eq->tpending = false;
 		}
 		wl_free_timer(eq->wl, eq->timer);
 		eq->timer = NULL;
 	}
 
-	ASSERT(wlc_eventq_avail(eq) == FALSE);
-	MFREE(eq->pub->osh, eq, sizeof(wlc_eventq_t));
+	ASSERT(wlc_eventq_avail(eq) == false);
+	kfree(eq);
 	return 0;
 }
 
-int BCMUNINITFN(wlc_eventq_down) (wlc_eventq_t * eq) {
+int wlc_eventq_down(wlc_eventq_t *eq)
+{
 	int callbacks = 0;
 	if (eq->tpending && !eq->workpending) {
 		if (!wl_del_timer(eq->wl, eq->timer))
 			callbacks++;
 
-		ASSERT(wlc_eventq_avail(eq) == TRUE);
-		ASSERT(eq->workpending == FALSE);
-		eq->workpending = TRUE;
+		ASSERT(wlc_eventq_avail(eq) == true);
+		ASSERT(eq->workpending == false);
+		eq->workpending = true;
 		if (eq->cb)
 			eq->cb(eq->wlc);
 
-		ASSERT(eq->workpending == TRUE);
-		eq->workpending = FALSE;
-		eq->tpending = FALSE;
+		ASSERT(eq->workpending == true);
+		eq->workpending = false;
+		eq->tpending = false;
 	} else {
-		ASSERT(eq->workpending || wlc_eventq_avail(eq) == FALSE);
+		ASSERT(eq->workpending || wlc_eventq_avail(eq) == false);
 	}
 	return callbacks;
 }
 
-wlc_event_t *wlc_event_alloc(wlc_eventq_t * eq)
+wlc_event_t *wlc_event_alloc(wlc_eventq_t *eq)
 {
 	wlc_event_t *e;
 
-	e = MALLOC(eq->pub->osh, sizeof(wlc_event_t));
+	e = kzalloc(sizeof(wlc_event_t), GFP_ATOMIC);
 
 	if (e == NULL)
 		return NULL;
 
-	bzero(e, sizeof(wlc_event_t));
 	return e;
 }
 
-void wlc_event_free(wlc_eventq_t * eq, wlc_event_t * e)
+void wlc_event_free(wlc_eventq_t *eq, wlc_event_t *e)
 {
 	ASSERT(e->data == NULL);
 	ASSERT(e->next == NULL);
-	MFREE(eq->pub->osh, e, sizeof(wlc_event_t));
+	kfree(e);
 }
 
-void wlc_eventq_enq(wlc_eventq_t * eq, wlc_event_t * e)
+void wlc_eventq_enq(wlc_eventq_t *eq, wlc_event_t *e)
 {
 	ASSERT(e->next == NULL);
 	e->next = NULL;
@@ -150,7 +150,7 @@ void wlc_eventq_enq(wlc_eventq_t * eq, wlc_event_t * e)
 		eq->head = eq->tail = e;
 
 	if (!eq->tpending) {
-		eq->tpending = TRUE;
+		eq->tpending = true;
 		/* Use a zero-delay timer to trigger
 		 * delayed processing of the event.
 		 */
@@ -158,7 +158,7 @@ void wlc_eventq_enq(wlc_eventq_t * eq, wlc_event_t * e)
 	}
 }
 
-wlc_event_t *wlc_eventq_deq(wlc_eventq_t * eq)
+wlc_event_t *wlc_eventq_deq(wlc_eventq_t *eq)
 {
 	wlc_event_t *e;
 
@@ -173,7 +173,7 @@ wlc_event_t *wlc_eventq_deq(wlc_eventq_t * eq)
 	return e;
 }
 
-wlc_event_t *wlc_eventq_next(wlc_eventq_t * eq, wlc_event_t * e)
+wlc_event_t *wlc_eventq_next(wlc_eventq_t *eq, wlc_event_t *e)
 {
 #ifdef BCMDBG
 	wlc_event_t *etmp;
@@ -188,7 +188,7 @@ wlc_event_t *wlc_eventq_next(wlc_eventq_t * eq, wlc_event_t * e)
 	return e->next;
 }
 
-int wlc_eventq_cnt(wlc_eventq_t * eq)
+int wlc_eventq_cnt(wlc_eventq_t *eq)
 {
 	wlc_event_t *etmp;
 	int cnt = 0;
@@ -199,7 +199,7 @@ int wlc_eventq_cnt(wlc_eventq_t * eq)
 	return cnt;
 }
 
-bool wlc_eventq_avail(wlc_eventq_t * eq)
+bool wlc_eventq_avail(wlc_eventq_t *eq)
 {
 	return (eq->head != NULL);
 }
@@ -211,16 +211,16 @@ static void wlc_timer_cb(void *arg)
 {
 	struct wlc_eventq *eq = (struct wlc_eventq *)arg;
 
-	ASSERT(eq->tpending == TRUE);
-	ASSERT(wlc_eventq_avail(eq) == TRUE);
-	ASSERT(eq->workpending == FALSE);
-	eq->workpending = TRUE;
+	ASSERT(eq->tpending == true);
+	ASSERT(wlc_eventq_avail(eq) == true);
+	ASSERT(eq->workpending == false);
+	eq->workpending = true;
 
 	if (eq->cb)
 		eq->cb(eq->wlc);
 
-	ASSERT(wlc_eventq_avail(eq) == FALSE);
-	ASSERT(eq->tpending == TRUE);
-	eq->workpending = FALSE;
-	eq->tpending = FALSE;
+	ASSERT(wlc_eventq_avail(eq) == false);
+	ASSERT(eq->tpending == true);
+	eq->workpending = false;
+	eq->tpending = false;
 }

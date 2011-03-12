@@ -53,17 +53,17 @@ struct wl_if {
 
 #define WL_MAX_FW		4
 struct wl_firmware {
-	uint32 fw_cnt;
+	u32 fw_cnt;
 	const struct firmware *fw_bin[WL_MAX_FW];
 	const struct firmware *fw_hdr[WL_MAX_FW];
-	uint32 hdr_num_entries[WL_MAX_FW];
+	u32 hdr_num_entries[WL_MAX_FW];
 };
 
 struct wl_info {
 	wlc_pub_t *pub;		/* pointer to public wlc state */
 	void *wlc;		/* pointer to private common os-independent data */
 	osl_t *osh;		/* pointer to os handler */
-	uint32 magic;
+	u32 magic;
 
 	int irq;
 
@@ -81,11 +81,11 @@ struct wl_info {
 	struct tasklet_struct tasklet;	/* dpc tasklet */
 #ifdef BCMSDIO
 	bcmsdh_info_t *sdh;	/* pointer to sdio bus handler */
-	ulong flags;		/* current irq flags */
+	unsigned long flags;		/* current irq flags */
 #endif				/* BCMSDIO */
 	bool resched;		/* dpc needs to be and is rescheduled */
 #ifdef LINUXSTA_PS
-	uint32 pci_psstate[16];	/* pci ps-state save/restore */
+	u32 pci_psstate[16];	/* pci ps-state save/restore */
 #endif
 	/* RPC, handle, lock, txq, workitem */
 #ifdef WLC_HIGH_ONLY
@@ -108,26 +108,16 @@ struct wl_info {
 	uint stats_id;		/* the current set of stats */
 	/* ping-pong stats counters updated by Linux watchdog */
 	struct net_device_stats stats_watchdog[2];
-
-	struct proc_dir_entry *proc_entry;
-	char *ioctlbuf;
-	unsigned int ioctlbuf_sz;
-	wl_ioctl_t ioc;
-	int proc_state;
-	bool ioctl_in_progress;
 	struct wl_firmware fw;
 };
-#define WL_PROC_IDLE		(0)
-#define WL_PROC_HAVE_IOC	(1)
-#define WL_PROC_HAVE_BUF 	(2)
 
 #ifndef WLC_HIGH_ONLY
 #define WL_LOCK(wl)	spin_lock_bh(&(wl)->lock)
 #define WL_UNLOCK(wl)	spin_unlock_bh(&(wl)->lock)
 
 /* locking from inside wl_isr */
-#define WL_ISRLOCK(wl, flags) do {spin_lock(&(wl)->isr_lock); (void)(flags);} while (0)
-#define WL_ISRUNLOCK(wl, flags) do {spin_unlock(&(wl)->isr_lock); (void)(flags);} while (0)
+#define WL_ISRLOCK(wl, flags) do {spin_lock(&(wl)->isr_lock); (void)(flags); } while (0)
+#define WL_ISRUNLOCK(wl, flags) do {spin_unlock(&(wl)->isr_lock); (void)(flags); } while (0)
 
 /* locking under WL_LOCK() to synchronize with wl_isr */
 #define INT_LOCK(wl, flags)	spin_lock_irqsave(&(wl)->isr_lock, flags)
@@ -158,14 +148,14 @@ extern irqreturn_t wl_isr(int irq, void *dev_id);
 
 extern int __devinit wl_pci_probe(struct pci_dev *pdev,
 				  const struct pci_device_id *ent);
-extern void wl_free(wl_info_t * wl);
+extern void wl_free(wl_info_t *wl);
 extern int wl_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd);
-extern int wl_ucode_data_init(wl_info_t * wl);
+extern int wl_ucode_data_init(wl_info_t *wl);
 extern void wl_ucode_data_free(void);
 #ifdef WLC_LOW
 extern void wl_ucode_free_buf(void *);
-extern int wl_ucode_init_buf(wl_info_t * wl, void **pbuf, uint32 idx);
-extern int wl_ucode_init_uint(wl_info_t * wl, uint32 * data, uint32 idx);
+extern int wl_ucode_init_buf(wl_info_t *wl, void **pbuf, u32 idx);
+extern int wl_ucode_init_uint(wl_info_t *wl, u32 *data, u32 idx);
 #endif				/* WLC_LOW */
 
 #endif				/* _wl_mac80211_h_ */

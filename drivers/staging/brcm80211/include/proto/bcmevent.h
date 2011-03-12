@@ -17,10 +17,6 @@
 #ifndef _BCMEVENT_H_
 #define _BCMEVENT_H_
 
-#ifndef _TYPEDEFS_H_
-#include <typedefs.h>
-#endif
-
 #include <packed_section_start.h>
 
 #define BCM_EVENT_MSG_VERSION		1
@@ -31,17 +27,24 @@
 #define WLC_EVENT_MSG_GROUP		0x04
 
 typedef BWL_PRE_PACKED_STRUCT struct {
-	uint16 version;
-	uint16 flags;
-	uint32 event_type;
-	uint32 status;
-	uint32 reason;
-	uint32 auth_type;
-	uint32 datalen;
+	u16 version;
+	u16 flags;
+	u32 event_type;
+	u32 status;
+	u32 reason;
+	u32 auth_type;
+	u32 datalen;
 	struct ether_addr addr;
 	char ifname[BCM_MSG_IFNAME_MAX];
 } BWL_POST_PACKED_STRUCT wl_event_msg_t;
 
+#ifdef BRCM_FULLMAC
+typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
+	struct ether_header eth;
+	bcmeth_hdr_t		bcm_hdr;
+	wl_event_msg_t		event;
+} BWL_POST_PACKED_STRUCT bcm_event_t;
+#endif
 #define BCM_MSG_LEN	(sizeof(bcm_event_t) - sizeof(bcmeth_hdr_t) - \
 	sizeof(struct ether_header))
 
@@ -189,11 +192,11 @@ extern const int bcmevent_names_size;
 #define WLC_E_SUP_DEAUTH		14
 
 typedef struct wl_event_data_if {
-	uint8 ifidx;
-	uint8 opcode;
-	uint8 reserved;
-	uint8 bssidx;
-	uint8 role;
+	u8 ifidx;
+	u8 opcode;
+	u8 reserved;
+	u8 bssidx;
+	u8 role;
 } wl_event_data_if_t;
 
 #define WLC_E_IF_ADD		1

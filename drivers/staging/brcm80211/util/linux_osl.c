@@ -14,47 +14,37 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <typedefs.h>
+#include <linux/delay.h>
+#include <linux/fs.h>
+#ifdef mips
+#include <asm/paccess.h>
+#endif				/* mips */
 #include <bcmendian.h>
 #include <linuxver.h>
 #include <bcmdefs.h>
 #include <osl.h>
 #include <bcmutils.h>
-#include <linux/delay.h>
-#ifdef mips
-#include <asm/paccess.h>
-#endif				/* mips */
 #include <pcicfg.h>
 
-#include <linux/fs.h>
 
 #define PCI_CFG_RETRY 		10
 
 #define OS_HANDLE_MAGIC		0x1234abcd	/* Magic # to recognise osh */
 #define BCM_MEM_FILENAME_LEN 	24	/* Mem. filename length */
 
-typedef struct bcm_mem_link {
-	struct bcm_mem_link *prev;
-	struct bcm_mem_link *next;
-	uint size;
-	int line;
-	char file[BCM_MEM_FILENAME_LEN];
-} bcm_mem_link_t;
-
 struct osl_info {
 	osl_pubinfo_t pub;
 	uint magic;
 	void *pdev;
-	uint malloced;
 	uint failed;
 	uint bustype;
-	bcm_mem_link_t *dbgmem_list;
 };
 
 /* Global ASSERT type flag */
-uint32 g_assert_type = 0;
+u32 g_assert_type;
 
-static int16 linuxbcmerrormap[] = { 0,	/* 0 */
+#ifdef BRCM_FULLMAC
+static s16 linuxbcmerrormap[] = { 0,	/* 0 */
 	-EINVAL,		/* BCME_ERROR */
 	-EINVAL,		/* BCME_BADARG */
 	-EINVAL,		/* BCME_BADOPTION */
@@ -119,6 +109,7 @@ int osl_error(int bcmerror)
 	/* Array bounds covered by ASSERT in osl_attach */
 	return linuxbcmerrormap[-bcmerror];
 }
+#endif /* BRCM_FULLMAC */
 
 osl_t *osl_attach(void *pdev, uint bustype, bool pkttag)
 {
@@ -129,13 +120,13 @@ osl_t *osl_attach(void *pdev, uint bustype, bool pkttag)
 
 	bzero(osh, sizeof(osl_t));
 
+#ifdef BRCM_FULLMAC
 	/* Check that error map has the right number of entries in it */
-	ASSERT(ABS(BCME_LAST) == (ARRAYSIZE(linuxbcmerrormap) - 1));
+	ASSERT(ABS(BCME_LAST) == (ARRAY_SIZE(linuxbcmerrormap) - 1));
+#endif /* BRCM_FULLMAC */
 
 	osh->magic = OS_HANDLE_MAGIC;
-	osh->malloced = 0;
 	osh->failed = 0;
-	osh->dbgmem_list = NULL;
 	osh->pdev = pdev;
 	osh->pub.pkttag = pkttag;
 	osh->bustype = bustype;
@@ -143,21 +134,22 @@ osl_t *osl_attach(void *pdev, uint bustype, bool pkttag)
 	switch (bustype) {
 	case PCI_BUS:
 	case SI_BUS:
-		osh->pub.mmbus = TRUE;
+	case PCMCIA_BUS:
+		osh->pub.mmbus = true;
 		break;
 	case JTAG_BUS:
 	case SDIO_BUS:
 	case USB_BUS:
 	case SPI_BUS:
 	case RPC_BUS:
-		osh->pub.mmbus = FALSE;
+		osh->pub.mmbus = false;
 		break;
 	default:
-		ASSERT(FALSE);
+		ASSERT(false);
 		break;
 	}
 
-#ifdef BCMDBG
+#if defined(BCMDBG) && !defined(BRCM_FULLMAC)
 	if (pkttag) {
 		struct sk_buff *skb;
 		ASSERT(OSL_PKTTAG_SZ <= sizeof(skb->cb));
@@ -166,7 +158,7 @@ osl_t *osl_attach(void *pdev, uint bustype, bool pkttag)
 	return osh;
 }
 
-void osl_detach(osl_t * osh)
+void osl_detach(osl_t *osh)
 {
 	if (osh == NULL)
 		return;
@@ -176,22 +168,23 @@ void osl_detach(osl_t * osh)
 }
 
 /* Return a new packet. zero out pkttag */
-void *BCMFASTPATH osl_pktget(osl_t * osh, uint len)
+void *BCMFASTPATH osl_pktget(osl_t *osh, uint len)
 {
 	struct sk_buff *skb;
 
-	if ((skb = dev_alloc_skb(len))) {
+	skb = dev_alloc_skb(len);
+	if (skb) {
 		skb_put(skb, len);
 		skb->priority = 0;
 
 		osh->pub.pktalloced++;
 	}
 
-	return ((void *)skb);
+	return (void *)skb;
 }
 
 /* Free the driver packet. Free the tag if present */
-void BCMFASTPATH osl_pktfree(osl_t * osh, void *p, bool send)
+void BCMFASTPATH osl_pktfree(osl_t *osh, void *p, bool send)
 {
 	struct sk_buff *skb, *nskb;
 	int nest = 0;
@@ -224,7 +217,7 @@ void BCMFASTPATH osl_pktfree(osl_t * osh, void *p, bool send)
 	}
 }
 
-uint32 osl_pci_read_config(osl_t * osh, uint offset, uint size)
+u32 osl_pci_read_config(osl_t *osh, uint offset, uint size)
 {
 	uint val = 0;
 	uint retry = PCI_CFG_RETRY;
@@ -246,10 +239,10 @@ uint32 osl_pci_read_config(osl_t * osh, uint offset, uint size)
 		       offset, (PCI_CFG_RETRY - retry));
 #endif				/* BCMDBG */
 
-	return (val);
+	return val;
 }
 
-void osl_pci_write_config(osl_t * osh, uint offset, uint size, uint val)
+void osl_pci_write_config(osl_t *osh, uint offset, uint size, uint val)
 {
 	uint retry = PCI_CFG_RETRY;
 
@@ -266,7 +259,7 @@ void osl_pci_write_config(osl_t * osh, uint offset, uint size, uint val)
 			break;
 	} while (retry--);
 
-#ifdef BCMDBG
+#if defined(BCMDBG) && !defined(BRCM_FULLMAC)
 	if (retry < PCI_CFG_RETRY)
 		printk("PCI CONFIG WRITE access to %d required %d retries\n",
 		       offset, (PCI_CFG_RETRY - retry));
@@ -274,7 +267,7 @@ void osl_pci_write_config(osl_t * osh, uint offset, uint size, uint val)
 }
 
 /* return bus # for the pci device pointed by osh->pdev */
-uint osl_pci_bus(osl_t * osh)
+uint osl_pci_bus(osl_t *osh)
 {
 	ASSERT(osh && (osh->magic == OS_HANDLE_MAGIC) && osh->pdev);
 
@@ -282,109 +275,55 @@ uint osl_pci_bus(osl_t * osh)
 }
 
 /* return slot # for the pci device pointed by osh->pdev */
-uint osl_pci_slot(osl_t * osh)
+uint osl_pci_slot(osl_t *osh)
 {
 	ASSERT(osh && (osh->magic == OS_HANDLE_MAGIC) && osh->pdev);
 
 	return PCI_SLOT(((struct pci_dev *)osh->pdev)->devfn);
 }
 
-static void
-osl_pcmcia_attr(osl_t * osh, uint offset, char *buf, int size, bool write)
-{
-}
-
-void osl_pcmcia_read_attr(osl_t * osh, uint offset, void *buf, int size)
-{
-	osl_pcmcia_attr(osh, offset, (char *)buf, size, FALSE);
-}
-
-void osl_pcmcia_write_attr(osl_t * osh, uint offset, void *buf, int size)
-{
-	osl_pcmcia_attr(osh, offset, (char *)buf, size, TRUE);
-}
-
-void *osl_malloc(osl_t * osh, uint size)
-{
-	void *addr;
-
-	/* only ASSERT if osh is defined */
-	if (osh)
-		ASSERT(osh->magic == OS_HANDLE_MAGIC);
-
-	if ((addr = kmalloc(size, GFP_ATOMIC)) == NULL) {
-		if (osh)
-			osh->failed++;
-		return (NULL);
-	}
-	if (osh)
-		osh->malloced += size;
-
-	return (addr);
-}
-
-void osl_mfree(osl_t * osh, void *addr, uint size)
-{
-	if (osh) {
-		ASSERT(osh->magic == OS_HANDLE_MAGIC);
-		osh->malloced -= size;
-	}
-	kfree(addr);
-}
-
-uint osl_malloced(osl_t * osh)
-{
-	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
-	return (osh->malloced);
-}
-
-uint osl_malloc_failed(osl_t * osh)
-{
-	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
-	return (osh->failed);
-}
-
 uint osl_dma_consistent_align(void)
 {
-	return (PAGE_SIZE);
+	return PAGE_SIZE;
 }
 
-void *osl_dma_alloc_consistent(osl_t * osh, uint size, uint16 align_bits,
-			       uint * alloced, ulong * pap)
+void *osl_dma_alloc_consistent(osl_t *osh, uint size, u16 align_bits,
+			       uint *alloced, unsigned long *pap)
 {
-	uint16 align = (1 << align_bits);
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 
-	if (!ISALIGNED(DMA_CONSISTENT_ALIGN, align))
-		size += align;
-	*alloced = size;
-
-	return (pci_alloc_consistent(osh->pdev, size, (dma_addr_t *) pap));
+	if (align_bits) {
+		u16 align = (1 << align_bits);
+		if (!IS_ALIGNED(DMA_CONSISTENT_ALIGN, align))
+			size += align;
+		*alloced = size;
+	}
+	return pci_alloc_consistent(osh->pdev, size, (dma_addr_t *) pap);
 }
 
-void osl_dma_free_consistent(osl_t * osh, void *va, uint size, ulong pa)
+void osl_dma_free_consistent(osl_t *osh, void *va, uint size, unsigned long pa)
 {
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 
 	pci_free_consistent(osh->pdev, size, va, (dma_addr_t) pa);
 }
 
-uint BCMFASTPATH osl_dma_map(osl_t * osh, void *va, uint size, int direction)
+uint BCMFASTPATH osl_dma_map(osl_t *osh, void *va, uint size, int direction)
 {
 	int dir;
 
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 	dir = (direction == DMA_TX) ? PCI_DMA_TODEVICE : PCI_DMA_FROMDEVICE;
-	return (pci_map_single(osh->pdev, va, size, dir));
+	return pci_map_single(osh->pdev, va, size, dir);
 }
 
-void BCMFASTPATH osl_dma_unmap(osl_t * osh, uint pa, uint size, int direction)
+void BCMFASTPATH osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction)
 {
 	int dir;
 
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 	dir = (direction == DMA_TX) ? PCI_DMA_TODEVICE : PCI_DMA_FROMDEVICE;
-	pci_unmap_single(osh->pdev, (uint32) pa, size, dir);
+	pci_unmap_single(osh->pdev, (u32) pa, size, dir);
 }
 
 #if defined(BCMDBG_ASSERT)
@@ -409,22 +348,22 @@ void osl_assert(char *exp, char *file, int line)
 	/* Print assert message and give it time to be written to /var/log/messages */
 	if (!in_interrupt()) {
 		const int delay = 3;
-		printk("%s", tempbuf);
-		printk("panic in %d seconds\n", delay);
+		printk(KERN_ERR "%s", tempbuf);
+		printk(KERN_ERR "panic in %d seconds\n", delay);
 		set_current_state(TASK_INTERRUPTIBLE);
 		schedule_timeout(delay * HZ);
 	}
 
 	switch (g_assert_type) {
 	case 0:
-		panic("%s", tempbuf);
+		panic(KERN_ERR "%s", tempbuf);
 		break;
 	case 1:
-		printk("%s", tempbuf);
+		printk(KERN_ERR "%s", tempbuf);
 		BUG();
 		break;
 	case 2:
-		printk("%s", tempbuf);
+		printk(KERN_ERR "%s", tempbuf);
 		break;
 	default:
 		break;
@@ -434,83 +373,52 @@ void osl_assert(char *exp, char *file, int line)
 }
 #endif				/* defined(BCMDBG_ASSERT) */
 
-void osl_delay(uint usec)
-{
-	uint d;
-
-	while (usec > 0) {
-		d = MIN(usec, 1000);
-		udelay(d);
-		usec -= d;
-	}
-}
-
-/* Clone a packet.
- * The pkttag contents are NOT cloned.
- */
-void *osl_pktdup(osl_t * osh, void *skb)
-{
-	void *p;
-
-	if ((p = skb_clone((struct sk_buff *)skb, GFP_ATOMIC)) == NULL)
-		return NULL;
-
-	/* skb_clone copies skb->cb.. we don't want that */
-	if (osh->pub.pkttag)
-		bzero((void *)((struct sk_buff *)p)->cb, OSL_PKTTAG_SZ);
-
-	/* Increment the packet counter */
-	osh->pub.pktalloced++;
-	return (p);
-}
-
-#ifdef BCMSDIO
-uint8 osl_readb(osl_t * osh, volatile uint8 * r)
+#if defined(BCMSDIO) && !defined(BRCM_FULLMAC)
+u8 osl_readb(osl_t *osh, volatile u8 *r)
 {
 	osl_rreg_fn_t rreg = ((osl_pubinfo_t *) osh)->rreg_fn;
 	void *ctx = ((osl_pubinfo_t *) osh)->reg_ctx;
 
-	return (uint8) ((rreg) (ctx, (void *)r, sizeof(uint8)));
+	return (u8) ((rreg) (ctx, (void *)r, sizeof(u8)));
 }
 
-uint16 osl_readw(osl_t * osh, volatile uint16 * r)
+u16 osl_readw(osl_t *osh, volatile u16 *r)
 {
 	osl_rreg_fn_t rreg = ((osl_pubinfo_t *) osh)->rreg_fn;
 	void *ctx = ((osl_pubinfo_t *) osh)->reg_ctx;
 
-	return (uint16) ((rreg) (ctx, (void *)r, sizeof(uint16)));
+	return (u16) ((rreg) (ctx, (void *)r, sizeof(u16)));
 }
 
-uint32 osl_readl(osl_t * osh, volatile uint32 * r)
+u32 osl_readl(osl_t *osh, volatile u32 *r)
 {
 	osl_rreg_fn_t rreg = ((osl_pubinfo_t *) osh)->rreg_fn;
 	void *ctx = ((osl_pubinfo_t *) osh)->reg_ctx;
 
-	return (uint32) ((rreg) (ctx, (void *)r, sizeof(uint32)));
+	return (u32) ((rreg) (ctx, (void *)r, sizeof(u32)));
 }
 
-void osl_writeb(osl_t * osh, volatile uint8 * r, uint8 v)
+void osl_writeb(osl_t *osh, volatile u8 *r, u8 v)
 {
 	osl_wreg_fn_t wreg = ((osl_pubinfo_t *) osh)->wreg_fn;
 	void *ctx = ((osl_pubinfo_t *) osh)->reg_ctx;
 
-	((wreg) (ctx, (void *)r, v, sizeof(uint8)));
+	((wreg) (ctx, (void *)r, v, sizeof(u8)));
 }
 
-void osl_writew(osl_t * osh, volatile uint16 * r, uint16 v)
+void osl_writew(osl_t *osh, volatile u16 *r, u16 v)
 {
 	osl_wreg_fn_t wreg = ((osl_pubinfo_t *) osh)->wreg_fn;
 	void *ctx = ((osl_pubinfo_t *) osh)->reg_ctx;
 
-	((wreg) (ctx, (void *)r, v, sizeof(uint16)));
+	((wreg) (ctx, (void *)r, v, sizeof(u16)));
 }
 
-void osl_writel(osl_t * osh, volatile uint32 * r, uint32 v)
+void osl_writel(osl_t *osh, volatile u32 *r, u32 v)
 {
 	osl_wreg_fn_t wreg = ((osl_pubinfo_t *) osh)->wreg_fn;
 	void *ctx = ((osl_pubinfo_t *) osh)->reg_ctx;
 
-	((wreg) (ctx, (void *)r, v, sizeof(uint32)));
+	((wreg) (ctx, (void *)r, v, sizeof(u32)));
 }
-#endif				/* BCMSDIO */
-/* Linux Kernel: File Operations: end */
+#endif	/* BCMSDIO */

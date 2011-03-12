@@ -40,11 +40,11 @@ typedef void (*bcmsdh_cb_fn_t) (void *);
  *    implementation may maintain a single "default" handle (e.g. the first or
  *    most recent one) to enable single-instance implementations to pass NULL.
  */
-extern bcmsdh_info_t *bcmsdh_attach(osl_t * osh, void *cfghdl, void **regsva,
+extern bcmsdh_info_t *bcmsdh_attach(osl_t *osh, void *cfghdl, void **regsva,
 				    uint irq);
 
 /* Detach - freeup resources allocated in attach */
-extern int bcmsdh_detach(osl_t * osh, void *sdh);
+extern int bcmsdh_detach(osl_t *osh, void *sdh);
 
 /* Query if SD device interrupts are enabled */
 extern bool bcmsdh_intr_query(void *sdh);
@@ -75,15 +75,15 @@ extern int bcmsdh_devremove_reg(void *sdh, bcmsdh_cb_fn_t fn, void *argh);
  *   data: data byte to write
  *   err:  pointer to error code (or NULL)
  */
-extern uint8 bcmsdh_cfg_read(void *sdh, uint func, uint32 addr, int *err);
-extern void bcmsdh_cfg_write(void *sdh, uint func, uint32 addr, uint8 data,
+extern u8 bcmsdh_cfg_read(void *sdh, uint func, u32 addr, int *err);
+extern void bcmsdh_cfg_write(void *sdh, uint func, u32 addr, u8 data,
 			     int *err);
 
 /* Read/Write 4bytes from/to cfg space */
-extern uint32 bcmsdh_cfg_read_word(void *sdh, uint fnc_num, uint32 addr,
+extern u32 bcmsdh_cfg_read_word(void *sdh, uint fnc_num, u32 addr,
 				   int *err);
-extern void bcmsdh_cfg_write_word(void *sdh, uint fnc_num, uint32 addr,
-				  uint32 data, int *err);
+extern void bcmsdh_cfg_write_word(void *sdh, uint fnc_num, u32 addr,
+				  u32 data, int *err);
 
 /* Read CIS content for specified function.
  *   fn:     function whose CIS is being requested (0 is common CIS)
@@ -92,15 +92,15 @@ extern void bcmsdh_cfg_write_word(void *sdh, uint fnc_num, uint32 addr,
  * Internally, this routine uses the values from the cis base regs (0x9-0xB)
  * to form an SDIO-space address to read the data from.
  */
-extern int bcmsdh_cis_read(void *sdh, uint func, uint8 * cis, uint length);
+extern int bcmsdh_cis_read(void *sdh, uint func, u8 *cis, uint length);
 
 /* Synchronous access to device (client) core registers via CMD53 to F1.
  *   addr: backplane address (i.e. >= regsva from attach)
  *   size: register width in bytes (2 or 4)
  *   data: data for register write
  */
-extern uint32 bcmsdh_reg_read(void *sdh, uint32 addr, uint size);
-extern uint32 bcmsdh_reg_write(void *sdh, uint32 addr, uint size, uint32 data);
+extern u32 bcmsdh_reg_read(void *sdh, u32 addr, uint size);
+extern u32 bcmsdh_reg_write(void *sdh, u32 addr, uint size, u32 data);
 
 /* Indicate if last reg read/write failed */
 extern bool bcmsdh_regfail(void *sdh);
@@ -118,11 +118,11 @@ extern bool bcmsdh_regfail(void *sdh);
  * NOTE: Async operation is not currently supported.
  */
 typedef void (*bcmsdh_cmplt_fn_t) (void *handle, int status, bool sync_waiting);
-extern int bcmsdh_send_buf(void *sdh, uint32 addr, uint fn, uint flags,
-			   uint8 * buf, uint nbytes, void *pkt,
+extern int bcmsdh_send_buf(void *sdh, u32 addr, uint fn, uint flags,
+			   u8 *buf, uint nbytes, void *pkt,
 			   bcmsdh_cmplt_fn_t complete, void *handle);
-extern int bcmsdh_recv_buf(void *sdh, uint32 addr, uint fn, uint flags,
-			   uint8 * buf, uint nbytes, void *pkt,
+extern int bcmsdh_recv_buf(void *sdh, u32 addr, uint fn, uint flags,
+			   u8 *buf, uint nbytes, void *pkt,
 			   bcmsdh_cmplt_fn_t complete, void *handle);
 
 /* Flags bits */
@@ -140,7 +140,7 @@ extern int bcmsdh_recv_buf(void *sdh, uint32 addr, uint fn, uint flags,
  *   nbytes:   number of bytes to transfer to/from buf
  * Returns 0 or error code.
  */
-extern int bcmsdh_rwdata(void *sdh, uint rw, uint32 addr, uint8 * buf,
+extern int bcmsdh_rwdata(void *sdh, uint rw, u32 addr, u8 *buf,
 			 uint nbytes);
 
 /* Issue an abort to the specified function */
@@ -164,35 +164,35 @@ extern int bcmsdh_iovar_op(void *sdh, const char *name,
 			   bool set);
 
 /* Reset and reinitialize the device */
-extern int bcmsdh_reset(bcmsdh_info_t * sdh);
+extern int bcmsdh_reset(bcmsdh_info_t *sdh);
 
 /* helper functions */
 
-extern void *bcmsdh_get_sdioh(bcmsdh_info_t * sdh);
+extern void *bcmsdh_get_sdioh(bcmsdh_info_t *sdh);
 
 /* callback functions */
 typedef struct {
 	/* attach to device */
-	void *(*attach) (uint16 vend_id, uint16 dev_id, uint16 bus, uint16 slot,
-			 uint16 func, uint bustype, void *regsva, osl_t * osh,
+	void *(*attach) (u16 vend_id, u16 dev_id, u16 bus, u16 slot,
+			 u16 func, uint bustype, void *regsva, osl_t *osh,
 			 void *param);
 	/* detach from device */
 	void (*detach) (void *ch);
 } bcmsdh_driver_t;
 
 /* platform specific/high level functions */
-extern int bcmsdh_register(bcmsdh_driver_t * driver);
+extern int bcmsdh_register(bcmsdh_driver_t *driver);
 extern void bcmsdh_unregister(void);
-extern bool bcmsdh_chipmatch(uint16 vendor, uint16 device);
+extern bool bcmsdh_chipmatch(u16 vendor, u16 device);
 extern void bcmsdh_device_remove(void *sdh);
 
 /* Function to pass device-status bits to DHD. */
-extern uint32 bcmsdh_get_dstatus(void *sdh);
+extern u32 bcmsdh_get_dstatus(void *sdh);
 
 /* Function to return current window addr */
-extern uint32 bcmsdh_cur_sbwad(void *sdh);
+extern u32 bcmsdh_cur_sbwad(void *sdh);
 
 /* Function to pass chipid and rev to lower layers for controlling pr's */
-extern void bcmsdh_chipinfo(void *sdh, uint32 chip, uint32 chiprev);
+extern void bcmsdh_chipinfo(void *sdh, u32 chip, u32 chiprev);
 
 #endif				/* _bcmsdh_h_ */

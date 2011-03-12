@@ -56,15 +56,15 @@ struct wlc_bsscfg {
 	bool _ap;		/* is this configuration an AP */
 	struct wlc_if *wlcif;	/* virtual interface, NULL for primary bsscfg */
 	void *sup;		/* pointer to supplicant state */
-	int8 sup_type;		/* type of supplicant */
+	s8 sup_type;		/* type of supplicant */
 	bool sup_enable_wpa;	/* supplicant WPA on/off */
 	void *authenticator;	/* pointer to authenticator state */
 	bool sup_auth_pending;	/* flag for auth timeout */
 #endif
-	uint8 SSID_len;		/* the length of SSID */
-	uint8 SSID[DOT11_MAX_SSID_LEN];	/* SSID string */
+	u8 SSID_len;		/* the length of SSID */
+	u8 SSID[DOT11_MAX_SSID_LEN];	/* SSID string */
 	struct scb *bcmc_scb[MAXBANDS];	/* one bcmc_scb per band */
-	int8 _idx;		/* the index of this bsscfg,
+	s8 _idx;		/* the index of this bsscfg,
 				 * assigned at wlc_bsscfg_alloc()
 				 */
 	/* MAC filter */
@@ -73,13 +73,13 @@ struct wlc_bsscfg {
 	struct ether_addr *maclist;	/* list of source MAC addrs to match */
 
 	/* security */
-	uint32 wsec;		/* wireless security bitvec */
-	int16 auth;		/* 802.11 authentication: Open, Shared Key, WPA */
-	int16 openshared;	/* try Open auth first, then Shared Key */
+	u32 wsec;		/* wireless security bitvec */
+	s16 auth;		/* 802.11 authentication: Open, Shared Key, WPA */
+	s16 openshared;	/* try Open auth first, then Shared Key */
 	bool wsec_restrict;	/* drop unencrypted packets if wsec is enabled */
 	bool eap_restrict;	/* restrict data until 802.1X auth succeeds */
-	uint16 WPA_auth;	/* WPA: authenticated key management */
-	bool wpa2_preauth;	/* default is TRUE, wpa_cap sets value */
+	u16 WPA_auth;	/* WPA: authenticated key management */
+	bool wpa2_preauth;	/* default is true, wpa_cap sets value */
 	bool wsec_portopen;	/* indicates keys are plumbed */
 	wsec_iv_t wpa_none_txiv;	/* global txiv for WPA_NONE, tkip and aes */
 	int wsec_index;		/* 0-3: default tx key, -1: not set */
@@ -87,19 +87,19 @@ struct wlc_bsscfg {
 
 	/* TKIP countermeasures */
 	bool tkip_countermeasures;	/* flags TKIP no-assoc period */
-	uint32 tk_cm_dt;	/* detect timer */
-	uint32 tk_cm_bt;	/* blocking timer */
-	uint32 tk_cm_bt_tmstmp;	/* Timestamp when TKIP BT is activated */
+	u32 tk_cm_dt;	/* detect timer */
+	u32 tk_cm_bt;	/* blocking timer */
+	u32 tk_cm_bt_tmstmp;	/* Timestamp when TKIP BT is activated */
 	bool tk_cm_activate;	/* activate countermeasures after EAPOL-Key sent */
 
 	struct ether_addr BSSID;	/* BSSID (associated) */
 	struct ether_addr cur_etheraddr;	/* h/w address */
-	uint16 bcmc_fid;	/* the last BCMC FID queued to TX_BCMC_FIFO */
-	uint16 bcmc_fid_shm;	/* the last BCMC FID written to shared mem */
+	u16 bcmc_fid;	/* the last BCMC FID queued to TX_BCMC_FIFO */
+	u16 bcmc_fid_shm;	/* the last BCMC FID written to shared mem */
 
-	uint32 flags;		/* WLC_BSSCFG flags; see below */
+	u32 flags;		/* WLC_BSSCFG flags; see below */
 
-	uint8 *bcn;		/* AP beacon */
+	u8 *bcn;		/* AP beacon */
 	uint bcn_len;		/* AP beacon length */
 	bool ar_disassoc;	/* disassociated in associated recreation */
 
@@ -125,7 +125,7 @@ struct wlc_bsscfg {
 	wsec_key_t *rcmta;
 
 	/* 'unique' ID of this bsscfg, assigned at bsscfg allocation */
-	uint16 ID;
+	u16 ID;
 
 	uint txrspecidx;	/* index into tx rate circular buffer */
 	ratespec_t txrspec[NTXRATE][2];	/* circular buffer of prev MPDUs tx rates */

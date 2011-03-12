@@ -34,28 +34,28 @@ struct wlc_rpc_phy {
 	struct rpc_info *rpc;
 };
 
-#define RPCTX_ENAB(pub)		(TRUE)
-extern rpctx_info_t *wlc_rpctx_attach(wlc_pub_t * pub, struct wlc_info *wlc);
-extern int wlc_rpctx_fifoinit(rpctx_info_t * rpctx, uint fifo, uint ntxd);
-extern void wlc_rpctx_detach(rpctx_info_t * rpctx);
-extern int wlc_rpctx_dump(rpctx_info_t * rpctx, struct bcmstrbuf *b);
-extern void *wlc_rpctx_getnexttxp(rpctx_info_t * rpctx, uint fifo);
-extern void wlc_rpctx_txreclaim(rpctx_info_t * rpctx);
-extern uint wlc_rpctx_txavail(rpctx_info_t * rpctx, uint fifo);
-extern int wlc_rpctx_pkteng(rpctx_info_t * rpctx, uint fifo, void *p);
-extern int wlc_rpctx_tx(rpctx_info_t * rpctx, uint fifo, void *p, bool commit,
-			uint16 frameid, uint8 txpktpend);
-extern void wlc_rpctx_txpktpendinc(rpctx_info_t * rpctx, uint fifo, uint8 val);
-extern void wlc_rpctx_txpktpenddec(rpctx_info_t * rpctx, uint fifo, uint8 val);
-extern void wlc_rpctx_txpktpendclr(rpctx_info_t * rpctx, uint fifo);
-extern int wlc_rpctx_txpktpend(rpctx_info_t * rpctx, uint fifo, bool all);
+#define RPCTX_ENAB(pub)		(true)
+extern rpctx_info_t *wlc_rpctx_attach(wlc_pub_t *pub, struct wlc_info *wlc);
+extern int wlc_rpctx_fifoinit(rpctx_info_t *rpctx, uint fifo, uint ntxd);
+extern void wlc_rpctx_detach(rpctx_info_t *rpctx);
+extern int wlc_rpctx_dump(rpctx_info_t *rpctx, struct bcmstrbuf *b);
+extern void *wlc_rpctx_getnexttxp(rpctx_info_t *rpctx, uint fifo);
+extern void wlc_rpctx_txreclaim(rpctx_info_t *rpctx);
+extern uint wlc_rpctx_txavail(rpctx_info_t *rpctx, uint fifo);
+extern int wlc_rpctx_pkteng(rpctx_info_t *rpctx, uint fifo, void *p);
+extern int wlc_rpctx_tx(rpctx_info_t *rpctx, uint fifo, void *p, bool commit,
+			u16 frameid, u8 txpktpend);
+extern void wlc_rpctx_txpktpendinc(rpctx_info_t *rpctx, uint fifo, u8 val);
+extern void wlc_rpctx_txpktpenddec(rpctx_info_t *rpctx, uint fifo, u8 val);
+extern void wlc_rpctx_txpktpendclr(rpctx_info_t *rpctx, uint fifo);
+extern int wlc_rpctx_txpktpend(rpctx_info_t *rpctx, uint fifo, bool all);
 
 #else
-#define	RPCTX_ENAB(pub)			(FALSE)
+#define	RPCTX_ENAB(pub)			(false)
 #define	wlc_rpctx_attach(pub, wlc)	(NULL)
 #define	wlc_rpctx_fifoinit(rpctx, fifo, ntxd) (0)
 #define	wlc_rpctx_detach(rpctx)		ASSERT(0)
-#define	wlc_rpctx_txavail(rpctx, f)	(FALSE)
+#define	wlc_rpctx_txavail(rpctx, f)	(false)
 #define	wlc_rpctx_dump(rpctx, b)		(0)
 #define	wlc_rpctx_getnexttxp(rpctx, f)		(NULL)
 #define	wlc_rpctx_txreclaim(rpctx)		ASSERT(0)

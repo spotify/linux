@@ -80,36 +80,36 @@
 
 /* SW frame header */
 #define SDPCM_SEQUENCE_MASK		0x000000ff	/* Sequence Number Mask */
-#define SDPCM_PACKET_SEQUENCE(p) (((uint8 *)p)[0] & 0xff)	/* p starts w/SW Header */
+#define SDPCM_PACKET_SEQUENCE(p) (((u8 *)p)[0] & 0xff)	/* p starts w/SW Header */
 
 #define SDPCM_CHANNEL_MASK		0x00000f00	/* Channel Number Mask */
 #define SDPCM_CHANNEL_SHIFT		8	/* Channel Number Shift */
-#define SDPCM_PACKET_CHANNEL(p) (((uint8 *)p)[1] & 0x0f)	/* p starts w/SW Header */
+#define SDPCM_PACKET_CHANNEL(p) (((u8 *)p)[1] & 0x0f)	/* p starts w/SW Header */
 
 #define SDPCM_FLAGS_MASK		0x0000f000	/* Mask of flag bits */
 #define SDPCM_FLAGS_SHIFT		12	/* Flag bits shift */
-#define SDPCM_PACKET_FLAGS(p) ((((uint8 *)p)[1] & 0xf0) >> 4)	/* p starts w/SW Header */
+#define SDPCM_PACKET_FLAGS(p) ((((u8 *)p)[1] & 0xf0) >> 4)	/* p starts w/SW Header */
 
 /* Next Read Len: lookahead length of next frame, in 16-byte units (rounded up) */
 #define SDPCM_NEXTLEN_MASK		0x00ff0000	/* Next Read Len Mask */
 #define SDPCM_NEXTLEN_SHIFT		16	/* Next Read Len Shift */
-#define SDPCM_NEXTLEN_VALUE(p) ((((uint8 *)p)[2] & 0xff) << 4)	/* p starts w/SW Header */
+#define SDPCM_NEXTLEN_VALUE(p) ((((u8 *)p)[2] & 0xff) << 4)	/* p starts w/SW Header */
 #define SDPCM_NEXTLEN_OFFSET		2
 
 /* Data Offset from SOF (HW Tag, SW Tag, Pad) */
 #define SDPCM_DOFFSET_OFFSET		3	/* Data Offset */
-#define SDPCM_DOFFSET_VALUE(p) 		(((uint8 *)p)[SDPCM_DOFFSET_OFFSET] & 0xff)
+#define SDPCM_DOFFSET_VALUE(p) 		(((u8 *)p)[SDPCM_DOFFSET_OFFSET] & 0xff)
 #define SDPCM_DOFFSET_MASK		0xff000000
 #define SDPCM_DOFFSET_SHIFT		24
 
 #define SDPCM_FCMASK_OFFSET		4	/* Flow control */
-#define SDPCM_FCMASK_VALUE(p)		(((uint8 *)p)[SDPCM_FCMASK_OFFSET ] & 0xff)
+#define SDPCM_FCMASK_VALUE(p)		(((u8 *)p)[SDPCM_FCMASK_OFFSET] & 0xff)
 #define SDPCM_WINDOW_OFFSET		5	/* Credit based fc */
-#define SDPCM_WINDOW_VALUE(p)		(((uint8 *)p)[SDPCM_WINDOW_OFFSET] & 0xff)
+#define SDPCM_WINDOW_VALUE(p)		(((u8 *)p)[SDPCM_WINDOW_OFFSET] & 0xff)
 #define SDPCM_VERSION_OFFSET		6	/* Version # */
-#define SDPCM_VERSION_VALUE(p)		(((uint8 *)p)[SDPCM_VERSION_OFFSET] & 0xff)
+#define SDPCM_VERSION_VALUE(p)		(((u8 *)p)[SDPCM_VERSION_OFFSET] & 0xff)
 #define SDPCM_UNUSED_OFFSET		7	/* Spare */
-#define SDPCM_UNUSED_VALUE(p)		(((uint8 *)p)[SDPCM_UNUSED_OFFSET] & 0xff)
+#define SDPCM_UNUSED_VALUE(p)		(((u8 *)p)[SDPCM_UNUSED_OFFSET] & 0xff)
 
 #define SDPCM_SWHEADER_LEN	8	/* SW header is 64 bits */
 
@@ -131,7 +131,7 @@
 /* For GLOM_CHANNEL frames, use a flag to indicate descriptor frame */
 #define SDPCM_GLOMDESC_FLAG	(SDPCM_FLAG_GLOMDESC << SDPCM_FLAGS_SHIFT)
 
-#define SDPCM_GLOMDESC(p)	(((uint8 *)p)[1] & 0x80)
+#define SDPCM_GLOMDESC(p)	(((u8 *)p)[1] & 0x80)
 
 /* For TEST_CHANNEL packets, define another 4-byte header */
 #define SDPCM_TEST_HDRLEN	4	/* Generally: Cmd(1), Ext(1), Len(2);
@@ -146,89 +146,41 @@
 #define SDPCM_TEST_SEND		0x05	/* Receiver sets send mode. Ext is boolean on/off */
 
 /* Handy macro for filling in datagen packets with a pattern */
-#define SDPCM_TEST_FILL(byteno, id)	((uint8)(id + byteno))
+#define SDPCM_TEST_FILL(byteno, id)	((u8)(id + byteno))
 
 /*
  * Software counters (first part matches hardware counters)
  */
 
 typedef volatile struct {
-	uint32 cmd52rd;		/* Cmd52RdCount, SDIO: cmd52 reads */
-	uint32 cmd52wr;		/* Cmd52WrCount, SDIO: cmd52 writes */
-	uint32 cmd53rd;		/* Cmd53RdCount, SDIO: cmd53 reads */
-	uint32 cmd53wr;		/* Cmd53WrCount, SDIO: cmd53 writes */
-	uint32 abort;		/* AbortCount, SDIO: aborts */
-	uint32 datacrcerror;	/* DataCrcErrorCount, SDIO: frames w/CRC error */
-	uint32 rdoutofsync;	/* RdOutOfSyncCount, SDIO/PCMCIA: Rd Frm out of sync */
-	uint32 wroutofsync;	/* RdOutOfSyncCount, SDIO/PCMCIA: Wr Frm out of sync */
-	uint32 writebusy;	/* WriteBusyCount, SDIO: device asserted "busy" */
-	uint32 readwait;	/* ReadWaitCount, SDIO: no data ready for a read cmd */
-	uint32 readterm;	/* ReadTermCount, SDIO: read frame termination cmds */
-	uint32 writeterm;	/* WriteTermCount, SDIO: write frames termination cmds */
-	uint32 rxdescuflo;	/* receive descriptor underflows */
-	uint32 rxfifooflo;	/* receive fifo overflows */
-	uint32 txfifouflo;	/* transmit fifo underflows */
-	uint32 runt;		/* runt (too short) frames recv'd from bus */
-	uint32 badlen;		/* frame's rxh len does not match its hw tag len */
-	uint32 badcksum;	/* frame's hw tag chksum doesn't agree with len value */
-	uint32 seqbreak;	/* break in sequence # space from one rx frame to the next */
-	uint32 rxfcrc;		/* frame rx header indicates crc error */
-	uint32 rxfwoos;		/* frame rx header indicates write out of sync */
-	uint32 rxfwft;		/* frame rx header indicates write frame termination */
-	uint32 rxfabort;	/* frame rx header indicates frame aborted */
-	uint32 woosint;		/* write out of sync interrupt */
-	uint32 roosint;		/* read out of sync interrupt */
-	uint32 rftermint;	/* read frame terminate interrupt */
-	uint32 wftermint;	/* write frame terminate interrupt */
+	u32 cmd52rd;		/* Cmd52RdCount, SDIO: cmd52 reads */
+	u32 cmd52wr;		/* Cmd52WrCount, SDIO: cmd52 writes */
+	u32 cmd53rd;		/* Cmd53RdCount, SDIO: cmd53 reads */
+	u32 cmd53wr;		/* Cmd53WrCount, SDIO: cmd53 writes */
+	u32 abort;		/* AbortCount, SDIO: aborts */
+	u32 datacrcerror;	/* DataCrcErrorCount, SDIO: frames w/CRC error */
+	u32 rdoutofsync;	/* RdOutOfSyncCount, SDIO/PCMCIA: Rd Frm out of sync */
+	u32 wroutofsync;	/* RdOutOfSyncCount, SDIO/PCMCIA: Wr Frm out of sync */
+	u32 writebusy;	/* WriteBusyCount, SDIO: device asserted "busy" */
+	u32 readwait;	/* ReadWaitCount, SDIO: no data ready for a read cmd */
+	u32 readterm;	/* ReadTermCount, SDIO: read frame termination cmds */
+	u32 writeterm;	/* WriteTermCount, SDIO: write frames termination cmds */
+	u32 rxdescuflo;	/* receive descriptor underflows */
+	u32 rxfifooflo;	/* receive fifo overflows */
+	u32 txfifouflo;	/* transmit fifo underflows */
+	u32 runt;		/* runt (too short) frames recv'd from bus */
+	u32 badlen;		/* frame's rxh len does not match its hw tag len */
+	u32 badcksum;	/* frame's hw tag chksum doesn't agree with len value */
+	u32 seqbreak;	/* break in sequence # space from one rx frame to the next */
+	u32 rxfcrc;		/* frame rx header indicates crc error */
+	u32 rxfwoos;		/* frame rx header indicates write out of sync */
+	u32 rxfwft;		/* frame rx header indicates write frame termination */
+	u32 rxfabort;	/* frame rx header indicates frame aborted */
+	u32 woosint;		/* write out of sync interrupt */
+	u32 roosint;		/* read out of sync interrupt */
+	u32 rftermint;	/* read frame terminate interrupt */
+	u32 wftermint;	/* write frame terminate interrupt */
 } sdpcmd_cnt_t;
-
-/*
- * Register Access Macros
- */
-
-#define SDIODREV_IS(var, val)	((var) == (val))
-#define SDIODREV_GE(var, val)	((var) >= (val))
-#define SDIODREV_GT(var, val)	((var) > (val))
-#define SDIODREV_LT(var, val)	((var) < (val))
-#define SDIODREV_LE(var, val)	((var) <= (val))
-
-#define SDIODDMAREG32(h, dir, chnl) \
-	((dir) == DMA_TX ? \
-	 (void *)(uintptr)&((h)->regs->dma.sdiod32.dma32regs[chnl].xmt) : \
-	 (void *)(uintptr)&((h)->regs->dma.sdiod32.dma32regs[chnl].rcv))
-
-#define SDIODDMAREG64(h, dir, chnl) \
-	((dir) == DMA_TX ? \
-	 (void *)(uintptr)&((h)->regs->dma.sdiod64.dma64regs[chnl].xmt) : \
-	 (void *)(uintptr)&((h)->regs->dma.sdiod64.dma64regs[chnl].rcv))
-
-#define SDIODDMAREG(h, dir, chnl) \
-	(SDIODREV_LT((h)->corerev, 1) ? \
-	 SDIODDMAREG32((h), (dir), (chnl)) : \
-	 SDIODDMAREG64((h), (dir), (chnl)))
-
-#define PCMDDMAREG(h, dir, chnl) \
-	((dir) == DMA_TX ? \
-	 (void *)(uintptr)&((h)->regs->dma.pcm32.dmaregs.xmt) : \
-	 (void *)(uintptr)&((h)->regs->dma.pcm32.dmaregs.rcv))
-
-#define SDPCMDMAREG(h, dir, chnl, coreid) \
-	((coreid) == SDIOD_CORE_ID ? \
-	 SDIODDMAREG(h, dir, chnl) : \
-	 PCMDDMAREG(h, dir, chnl))
-
-#define SDIODFIFOREG(h, corerev) \
-	(SDIODREV_LT((corerev), 1) ? \
-	 ((dma32diag_t *)(uintptr)&((h)->regs->dma.sdiod32.dmafifo)) : \
-	 ((dma32diag_t *)(uintptr)&((h)->regs->dma.sdiod64.dmafifo)))
-
-#define PCMDFIFOREG(h) \
-	((dma32diag_t *)(uintptr)&((h)->regs->dma.pcm32.dmafifo))
-
-#define SDPCMFIFOREG(h, coreid, corerev) \
-	((coreid) == SDIOD_CORE_ID ? \
-	 SDIODFIFOREG(h, corerev) : \
-	 PCMDFIFOREG(h))
 
 /*
  * Shared structure between dongle and the host.
@@ -241,13 +193,13 @@ typedef volatile struct {
 #define SDPCM_SHARED_TRAP          0x0400
 
 typedef struct {
-	uint32 flags;
-	uint32 trap_addr;
-	uint32 assert_exp_addr;
-	uint32 assert_file_addr;
-	uint32 assert_line;
-	uint32 console_addr;	/* Address of hndrte_cons_t */
-	uint32 msgtrace_addr;
+	u32 flags;
+	u32 trap_addr;
+	u32 assert_exp_addr;
+	u32 assert_file_addr;
+	u32 assert_line;
+	u32 console_addr;	/* Address of hndrte_cons_t */
+	u32 msgtrace_addr;
 } sdpcm_shared_t;
 
 extern sdpcm_shared_t sdpcm_shared;

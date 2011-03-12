@@ -14,9 +14,11 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <typedefs.h>
+#include <linux/kernel.h>
+#include <linux/string.h>
 #include <bcmdefs.h>
 #include <osl.h>
+#include <linuxver.h>
 #include <bcmutils.h>
 #include <siutils.h>
 #include <hndsoc.h>
@@ -30,13 +32,13 @@
 
 /* EROM parsing */
 
-static uint32
-get_erom_ent(si_t * sih, uint32 ** eromptr, uint32 mask, uint32 match)
+static u32
+get_erom_ent(si_t *sih, u32 **eromptr, u32 mask, u32 match)
 {
-	uint32 ent;
+	u32 ent;
 	uint inv = 0, nom = 0;
 
-	while (TRUE) {
+	while (true) {
 		ent = R_REG(si_osh(sih), *eromptr);
 		(*eromptr)++;
 
@@ -65,11 +67,11 @@ get_erom_ent(si_t * sih, uint32 ** eromptr, uint32 mask, uint32 match)
 	return ent;
 }
 
-static uint32
-get_asd(si_t * sih, uint32 ** eromptr, uint sp, uint ad, uint st,
-	uint32 * addrl, uint32 * addrh, uint32 * sizel, uint32 * sizeh)
+static u32
+get_asd(si_t *sih, u32 **eromptr, uint sp, uint ad, uint st,
+	u32 *addrl, u32 *addrh, u32 *sizel, u32 *sizeh)
 {
-	uint32 asd, sz, szd;
+	u32 asd, sz, szd;
 
 	asd = get_erom_ent(sih, eromptr, ER_VALID, ER_VALID);
 	if (((asd & ER_TAG1) != ER_ADD) ||
@@ -100,26 +102,27 @@ get_asd(si_t * sih, uint32 ** eromptr, uint sp, uint ad, uint st,
 	return asd;
 }
 
-static void ai_hwfixup(si_info_t * sii)
+static void ai_hwfixup(si_info_t *sii)
 {
 }
 
 /* parse the enumeration rom to identify all cores */
-void BCMATTACHFN(ai_scan) (si_t * sih, void *regs, uint devid) {
+void ai_scan(si_t *sih, void *regs, uint devid)
+{
 	si_info_t *sii = SI_INFO(sih);
 	chipcregs_t *cc = (chipcregs_t *) regs;
-	uint32 erombase, *eromptr, *eromlim;
+	u32 erombase, *eromptr, *eromlim;
 
 	erombase = R_REG(sii->osh, &cc->eromptr);
 
 	switch (BUSTYPE(sih->bustype)) {
 	case SI_BUS:
-		eromptr = (uint32 *) REG_MAP(erombase, SI_CORE_SIZE);
+		eromptr = (u32 *) REG_MAP(erombase, SI_CORE_SIZE);
 		break;
 
 	case PCI_BUS:
 		/* Set wrappers address */
-		sii->curwrap = (void *)((uintptr) regs + SI_CORE_SIZE);
+		sii->curwrap = (void *)((unsigned long)regs + SI_CORE_SIZE);
 
 		/* Now point the window at the erom */
 		OSL_PCI_WRITE_CONFIG(sii->osh, PCI_BAR0_WIN, 4, erombase);
@@ -130,7 +133,7 @@ void BCMATTACHFN(ai_scan) (si_t * sih, void *regs, uint devid) {
 	case SPI_BUS:
 	case SDIO_BUS:
 #endif				/* BCMSDIO */
-		eromptr = (uint32 *) (uintptr) erombase;
+		eromptr = (u32 *)(unsigned long)erombase;
 		break;
 
 	default:
@@ -139,17 +142,17 @@ void BCMATTACHFN(ai_scan) (si_t * sih, void *regs, uint devid) {
 		ASSERT(0);
 		return;
 	}
-	eromlim = eromptr + (ER_REMAPCONTROL / sizeof(uint32));
+	eromlim = eromptr + (ER_REMAPCONTROL / sizeof(u32));
 
 	SI_VMSG(("ai_scan: regs = 0x%p, erombase = 0x%08x, eromptr = 0x%p, eromlim = 0x%p\n", regs, erombase, eromptr, eromlim));
 	while (eromptr < eromlim) {
-		uint32 cia, cib, cid, mfg, crev, nmw, nsw, nmp, nsp;
-		uint32 mpd, asd, addrl, addrh, sizel, sizeh;
-		uint32 *base;
+		u32 cia, cib, cid, mfg, crev, nmw, nsw, nmp, nsp;
+		u32 mpd, asd, addrl, addrh, sizel, sizeh;
+		u32 *base;
 		uint i, j, idx;
 		bool br;
 
-		br = FALSE;
+		br = false;
 
 		/* Grok a component */
 		cia = get_erom_ent(sih, &eromptr, ER_TAG, ER_CI);
@@ -220,7 +223,7 @@ void BCMATTACHFN(ai_scan) (si_t * sih, void *regs, uint devid) {
 			    get_asd(sih, &eromptr, 0, 0, AD_ST_BRIDGE, &addrl,
 				    &addrh, &sizel, &sizeh);
 			if (asd != 0)
-				br = TRUE;
+				br = true;
 			else if ((addrh != 0) || (sizeh != 0)
 				 || (sizel != SI_CORE_SIZE)) {
 				SI_ERROR(("First Slave ASD for core 0x%04x malformed " "(0x%08x)\n", cid, asd));
@@ -310,15 +313,15 @@ void BCMATTACHFN(ai_scan) (si_t * sih, void *regs, uint devid) {
 /* This function changes the logical "focus" to the indicated core.
  * Return the current core's virtual address.
  */
-void *ai_setcoreidx(si_t * sih, uint coreidx)
+void *ai_setcoreidx(si_t *sih, uint coreidx)
 {
 	si_info_t *sii = SI_INFO(sih);
-	uint32 addr = sii->coresba[coreidx];
-	uint32 wrap = sii->wrapba[coreidx];
+	u32 addr = sii->coresba[coreidx];
+	u32 wrap = sii->wrapba[coreidx];
 	void *regs;
 
 	if (coreidx >= sii->numcores)
-		return (NULL);
+		return NULL;
 
 	/*
 	 * If the user has provided an interrupt mask enabled function,
@@ -354,8 +357,8 @@ void *ai_setcoreidx(si_t * sih, uint coreidx)
 	case SPI_BUS:
 	case SDIO_BUS:
 #endif				/* BCMSDIO */
-		sii->curmap = regs = (void *)((uintptr) addr);
-		sii->curwrap = (void *)((uintptr) wrap);
+		sii->curmap = regs = (void *)(unsigned long)addr;
+		sii->curwrap = (void *)(unsigned long)wrap;
 		break;
 
 	default:
@@ -371,13 +374,13 @@ void *ai_setcoreidx(si_t * sih, uint coreidx)
 }
 
 /* Return the number of address spaces in current core */
-int ai_numaddrspaces(si_t * sih)
+int ai_numaddrspaces(si_t *sih)
 {
 	return 2;
 }
 
 /* Return the address of the nth address space in the current core */
-uint32 ai_addrspace(si_t * sih, uint asidx)
+u32 ai_addrspace(si_t *sih, uint asidx)
 {
 	si_info_t *sii;
 	uint cidx;
@@ -396,7 +399,7 @@ uint32 ai_addrspace(si_t * sih, uint asidx)
 }
 
 /* Return the size of the nth address space in the current core */
-uint32 ai_addrspacesize(si_t * sih, uint asidx)
+u32 ai_addrspacesize(si_t *sih, uint asidx)
 {
 	si_info_t *sii;
 	uint cidx;
@@ -414,7 +417,7 @@ uint32 ai_addrspacesize(si_t * sih, uint asidx)
 	}
 }
 
-uint ai_flag(si_t * sih)
+uint ai_flag(si_t *sih)
 {
 	si_info_t *sii;
 	aidmp_t *ai;
@@ -426,42 +429,42 @@ uint ai_flag(si_t * sih)
 	}
 	ai = sii->curwrap;
 
-	return (R_REG(sii->osh, &ai->oobselouta30) & 0x1f);
+	return R_REG(sii->osh, &ai->oobselouta30) & 0x1f;
 }
 
-void ai_setint(si_t * sih, int siflag)
+void ai_setint(si_t *sih, int siflag)
 {
 }
 
-void ai_write_wrap_reg(si_t * sih, uint32 offset, uint32 val)
+void ai_write_wrap_reg(si_t *sih, u32 offset, u32 val)
 {
 	si_info_t *sii = SI_INFO(sih);
-	uint32 *w = (uint32 *) sii->curwrap;
+	u32 *w = (u32 *) sii->curwrap;
 	W_REG(sii->osh, w + (offset / 4), val);
 	return;
 }
 
-uint ai_corevendor(si_t * sih)
+uint ai_corevendor(si_t *sih)
 {
 	si_info_t *sii;
-	uint32 cia;
+	u32 cia;
 
 	sii = SI_INFO(sih);
 	cia = sii->cia[sii->curidx];
-	return ((cia & CIA_MFG_MASK) >> CIA_MFG_SHIFT);
+	return (cia & CIA_MFG_MASK) >> CIA_MFG_SHIFT;
 }
 
-uint ai_corerev(si_t * sih)
+uint ai_corerev(si_t *sih)
 {
 	si_info_t *sii;
-	uint32 cib;
+	u32 cib;
 
 	sii = SI_INFO(sih);
 	cib = sii->cib[sii->curidx];
-	return ((cib & CIB_REV_MASK) >> CIB_REV_SHIFT);
+	return (cib & CIB_REV_MASK) >> CIB_REV_SHIFT;
 }
 
-bool ai_iscoreup(si_t * sih)
+bool ai_iscoreup(si_t *sih)
 {
 	si_info_t *sii;
 	aidmp_t *ai;
@@ -483,13 +486,13 @@ bool ai_iscoreup(si_t * sih)
  * Also, when using pci/pcie, we can optimize away the core switching for pci registers
  * and (on newer pci cores) chipcommon registers.
  */
-uint ai_corereg(si_t * sih, uint coreidx, uint regoff, uint mask, uint val)
+uint ai_corereg(si_t *sih, uint coreidx, uint regoff, uint mask, uint val)
 {
 	uint origidx = 0;
-	uint32 *r = NULL;
+	u32 *r = NULL;
 	uint w;
 	uint intr_val = 0;
-	bool fast = FALSE;
+	bool fast = false;
 	si_info_t *sii;
 
 	sii = SI_INFO(sih);
@@ -503,34 +506,34 @@ uint ai_corereg(si_t * sih, uint coreidx, uint regoff, uint mask, uint val)
 
 	if (BUSTYPE(sih->bustype) == SI_BUS) {
 		/* If internal bus, we can always get at everything */
-		fast = TRUE;
+		fast = true;
 		/* map if does not exist */
 		if (!sii->regs[coreidx]) {
 			sii->regs[coreidx] = REG_MAP(sii->coresba[coreidx],
 						     SI_CORE_SIZE);
 			ASSERT(GOODREGS(sii->regs[coreidx]));
 		}
-		r = (uint32 *) ((uchar *) sii->regs[coreidx] + regoff);
+		r = (u32 *) ((unsigned char *) sii->regs[coreidx] + regoff);
 	} else if (BUSTYPE(sih->bustype) == PCI_BUS) {
 		/* If pci/pcie, we can get at pci/pcie regs and on newer cores to chipc */
 
 		if ((sii->coreid[coreidx] == CC_CORE_ID) && SI_FAST(sii)) {
 			/* Chipc registers are mapped at 12KB */
 
-			fast = TRUE;
-			r = (uint32 *) ((char *)sii->curmap +
+			fast = true;
+			r = (u32 *) ((char *)sii->curmap +
 					PCI_16KB0_CCREGS_OFFSET + regoff);
 		} else if (sii->pub.buscoreidx == coreidx) {
 			/* pci registers are at either in the last 2KB of an 8KB window
 			 * or, in pcie and pci rev 13 at 8KB
 			 */
-			fast = TRUE;
+			fast = true;
 			if (SI_FAST(sii))
-				r = (uint32 *) ((char *)sii->curmap +
+				r = (u32 *) ((char *)sii->curmap +
 						PCI_16KB0_PCIREGS_OFFSET +
 						regoff);
 			else
-				r = (uint32 *) ((char *)sii->curmap +
+				r = (u32 *) ((char *)sii->curmap +
 						((regoff >= SBCONFIGOFF) ?
 						 PCI_BAR0_PCISBR_OFFSET :
 						 PCI_BAR0_PCIREGS_OFFSET) +
@@ -545,7 +548,7 @@ uint ai_corereg(si_t * sih, uint coreidx, uint regoff, uint mask, uint val)
 		origidx = si_coreidx(&sii->pub);
 
 		/* switch core */
-		r = (uint32 *) ((uchar *) ai_setcoreidx(&sii->pub, coreidx) +
+		r = (u32 *) ((unsigned char *) ai_setcoreidx(&sii->pub, coreidx) +
 				regoff);
 	}
 	ASSERT(r != NULL);
@@ -567,13 +570,13 @@ uint ai_corereg(si_t * sih, uint coreidx, uint regoff, uint mask, uint val)
 		INTR_RESTORE(sii, intr_val);
 	}
 
-	return (w);
+	return w;
 }
 
-void ai_core_disable(si_t * sih, uint32 bits)
+void ai_core_disable(si_t *sih, u32 bits)
 {
 	si_info_t *sii;
-	volatile uint32 dummy;
+	volatile u32 dummy;
 	aidmp_t *ai;
 
 	sii = SI_INFO(sih);
@@ -587,10 +590,10 @@ void ai_core_disable(si_t * sih, uint32 bits)
 
 	W_REG(sii->osh, &ai->ioctrl, bits);
 	dummy = R_REG(sii->osh, &ai->ioctrl);
-	OSL_DELAY(10);
+	udelay(10);
 
 	W_REG(sii->osh, &ai->resetctrl, AIRC_RESET);
-	OSL_DELAY(1);
+	udelay(1);
 }
 
 /* reset and re-enable a core
@@ -598,11 +601,11 @@ void ai_core_disable(si_t * sih, uint32 bits)
  * bits - core specific bits that are set during and after reset sequence
  * resetbits - core specific bits that are set only during reset sequence
  */
-void ai_core_reset(si_t * sih, uint32 bits, uint32 resetbits)
+void ai_core_reset(si_t *sih, u32 bits, u32 resetbits)
 {
 	si_info_t *sii;
 	aidmp_t *ai;
-	volatile uint32 dummy;
+	volatile u32 dummy;
 
 	sii = SI_INFO(sih);
 	ASSERT(GOODREGS(sii->curwrap));
@@ -619,18 +622,18 @@ void ai_core_reset(si_t * sih, uint32 bits, uint32 resetbits)
 	W_REG(sii->osh, &ai->ioctrl, (bits | SICF_FGC | SICF_CLOCK_EN));
 	dummy = R_REG(sii->osh, &ai->ioctrl);
 	W_REG(sii->osh, &ai->resetctrl, 0);
-	OSL_DELAY(1);
+	udelay(1);
 
 	W_REG(sii->osh, &ai->ioctrl, (bits | SICF_CLOCK_EN));
 	dummy = R_REG(sii->osh, &ai->ioctrl);
-	OSL_DELAY(1);
+	udelay(1);
 }
 
-void ai_core_cflags_wo(si_t * sih, uint32 mask, uint32 val)
+void ai_core_cflags_wo(si_t *sih, u32 mask, u32 val)
 {
 	si_info_t *sii;
 	aidmp_t *ai;
-	uint32 w;
+	u32 w;
 
 	sii = SI_INFO(sih);
 
@@ -651,11 +654,11 @@ void ai_core_cflags_wo(si_t * sih, uint32 mask, uint32 val)
 	}
 }
 
-uint32 ai_core_cflags(si_t * sih, uint32 mask, uint32 val)
+u32 ai_core_cflags(si_t *sih, u32 mask, u32 val)
 {
 	si_info_t *sii;
 	aidmp_t *ai;
-	uint32 w;
+	u32 w;
 
 	sii = SI_INFO(sih);
 	if (BCM47162_DMP()) {
@@ -677,11 +680,11 @@ uint32 ai_core_cflags(si_t * sih, uint32 mask, uint32 val)
 	return R_REG(sii->osh, &ai->ioctrl);
 }
 
-uint32 ai_core_sflags(si_t * sih, uint32 mask, uint32 val)
+u32 ai_core_sflags(si_t *sih, u32 mask, u32 val)
 {
 	si_info_t *sii;
 	aidmp_t *ai;
-	uint32 w;
+	u32 w;
 
 	sii = SI_INFO(sih);
 	if (BCM47162_DMP()) {
@@ -703,93 +706,3 @@ uint32 ai_core_sflags(si_t * sih, uint32 mask, uint32 val)
 	return R_REG(sii->osh, &ai->iostatus);
 }
 
-#ifdef BCMDBG
-void ai_view(si_t * sih, bool verbose)
-{
-	si_info_t *sii;
-	osl_t *osh;
-	aidmp_t *ai;
-	uint32 config;
-
-	sii = SI_INFO(sih);
-	ai = sii->curwrap;
-	osh = sii->osh;
-	if (BCM47162_DMP()) {
-		SI_ERROR(("Cannot access mips74k DMP in 47162a0\n"));
-		return;
-	}
-
-	config = R_REG(osh, &ai->config);
-	SI_ERROR(("\nCore ID: 0x%x, config 0x%x\n", si_coreid(&sii->pub),
-		  config));
-
-	if (config & AICFG_RST)
-		SI_ERROR(("resetctrl 0x%x, resetstatus 0x%x, resetreadid 0x%x, resetwriteid 0x%x\n", R_REG(osh, &ai->resetctrl), R_REG(osh, &ai->resetstatus), R_REG(osh, &ai->resetreadid), R_REG(osh, &ai->resetwriteid)));
-
-	if (config & AICFG_IOC)
-		SI_ERROR(("ioctrl 0x%x, width %d\n", R_REG(osh, &ai->ioctrl),
-			  R_REG(osh, &ai->ioctrlwidth)));
-
-	if (config & AICFG_IOS)
-		SI_ERROR(("iostatus 0x%x, width %d\n",
-			  R_REG(osh, &ai->iostatus), R_REG(osh,
-							   &ai->
-							   iostatuswidth)));
-
-	if (config & AICFG_ERRL) {
-		SI_ERROR(("errlogctrl 0x%x, errlogdone 0x%x, errlogstatus 0x%x, intstatus 0x%x\n", R_REG(osh, &ai->errlogctrl), R_REG(osh, &ai->errlogdone), R_REG(osh, &ai->errlogstatus), R_REG(osh, &ai->intstatus)));
-		SI_ERROR(("errlogid 0x%x, errloguser 0x%x, errlogflags 0x%x, errlogaddr " "0x%x/0x%x\n", R_REG(osh, &ai->errlogid), R_REG(osh, &ai->errloguser), R_REG(osh, &ai->errlogflags), R_REG(osh, &ai->errlogaddrhi), R_REG(osh, &ai->errlogaddrlo)));
-	}
-
-	if (verbose && (config & AICFG_OOB)) {
-		SI_ERROR(("oobselina30 0x%x, oobselina74 0x%x\n",
-			  R_REG(osh, &ai->oobselina30), R_REG(osh,
-							      &ai->
-							      oobselina74)));
-		SI_ERROR(("oobselinb30 0x%x, oobselinb74 0x%x\n",
-			  R_REG(osh, &ai->oobselinb30), R_REG(osh,
-							      &ai->
-							      oobselinb74)));
-		SI_ERROR(("oobselinc30 0x%x, oobselinc74 0x%x\n",
-			  R_REG(osh, &ai->oobselinc30), R_REG(osh,
-							      &ai->
-							      oobselinc74)));
-		SI_ERROR(("oobselind30 0x%x, oobselind74 0x%x\n",
-			  R_REG(osh, &ai->oobselind30), R_REG(osh,
-							      &ai->
-							      oobselind74)));
-		SI_ERROR(("oobselouta30 0x%x, oobselouta74 0x%x\n",
-			  R_REG(osh, &ai->oobselouta30), R_REG(osh,
-							       &ai->
-							       oobselouta74)));
-		SI_ERROR(("oobseloutb30 0x%x, oobseloutb74 0x%x\n",
-			  R_REG(osh, &ai->oobseloutb30), R_REG(osh,
-							       &ai->
-							       oobseloutb74)));
-		SI_ERROR(("oobseloutc30 0x%x, oobseloutc74 0x%x\n",
-			  R_REG(osh, &ai->oobseloutc30), R_REG(osh,
-							       &ai->
-							       oobseloutc74)));
-		SI_ERROR(("oobseloutd30 0x%x, oobseloutd74 0x%x\n",
-			  R_REG(osh, &ai->oobseloutd30), R_REG(osh,
-							       &ai->
-							       oobseloutd74)));
-		SI_ERROR(("oobsynca 0x%x, oobseloutaen 0x%x\n",
-			  R_REG(osh, &ai->oobsynca), R_REG(osh,
-							   &ai->oobseloutaen)));
-		SI_ERROR(("oobsyncb 0x%x, oobseloutben 0x%x\n",
-			  R_REG(osh, &ai->oobsyncb), R_REG(osh,
-							   &ai->oobseloutben)));
-		SI_ERROR(("oobsyncc 0x%x, oobseloutcen 0x%x\n",
-			  R_REG(osh, &ai->oobsyncc), R_REG(osh,
-							   &ai->oobseloutcen)));
-		SI_ERROR(("oobsyncd 0x%x, oobseloutden 0x%x\n",
-			  R_REG(osh, &ai->oobsyncd), R_REG(osh,
-							   &ai->oobseloutden)));
-		SI_ERROR(("oobaextwidth 0x%x, oobainwidth 0x%x, oobaoutwidth 0x%x\n", R_REG(osh, &ai->oobaextwidth), R_REG(osh, &ai->oobainwidth), R_REG(osh, &ai->oobaoutwidth)));
-		SI_ERROR(("oobbextwidth 0x%x, oobbinwidth 0x%x, oobboutwidth 0x%x\n", R_REG(osh, &ai->oobbextwidth), R_REG(osh, &ai->oobbinwidth), R_REG(osh, &ai->oobboutwidth)));
-		SI_ERROR(("oobcextwidth 0x%x, oobcinwidth 0x%x, oobcoutwidth 0x%x\n", R_REG(osh, &ai->oobcextwidth), R_REG(osh, &ai->oobcinwidth), R_REG(osh, &ai->oobcoutwidth)));
-		SI_ERROR(("oobdextwidth 0x%x, oobdinwidth 0x%x, oobdoutwidth 0x%x\n", R_REG(osh, &ai->oobdextwidth), R_REG(osh, &ai->oobdinwidth), R_REG(osh, &ai->oobdoutwidth)));
-	}
-}
-#endif				/* BCMDBG */

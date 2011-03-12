@@ -14,7 +14,8 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <typedefs.h>
+#include <linux/slab.h>
+#include <linux/string.h>
 #include <bcmdefs.h>
 #include <osl.h>
 #include <bcmutils.h>
@@ -38,7 +39,7 @@ typedef struct _vars {
 
 #define	VARS_T_OH	sizeof(vars_t)
 
-static vars_t *vars = NULL;
+static vars_t *vars;
 
 #define NVRAM_FILE	1
 
@@ -46,7 +47,8 @@ static char *findvar(char *vars, char *lim, const char *name);
 
 #if defined(FLASH)
 /* copy flash to ram */
-static void BCMINITFN(get_flash_nvram) (si_t * sih, struct nvram_header * nvh) {
+static void get_flash_nvram(si_t *sih, struct nvram_header *nvh)
+{
 	osl_t *osh;
 	uint nvs, bufsz;
 	vars_t *new;
@@ -56,7 +58,8 @@ static void BCMINITFN(get_flash_nvram) (si_t * sih, struct nvram_header * nvh) {
 	nvs = R_REG(osh, &nvh->len) - sizeof(struct nvram_header);
 	bufsz = nvs + VARS_T_OH;
 
-	if ((new = (vars_t *) MALLOC(osh, bufsz)) == NULL) {
+	new = kmalloc(bufsz, GFP_ATOMIC);
+	if (new == NULL) {
 		NVR_MSG(("Out of memory for flash vars\n"));
 		return;
 	}
@@ -74,7 +77,8 @@ static void BCMINITFN(get_flash_nvram) (si_t * sih, struct nvram_header * nvh) {
 }
 #endif				/* FLASH */
 
-int BCMATTACHFN(nvram_init) (void *si) {
+int nvram_init(void *si)
+{
 
 	/* Make sure we read nvram in flash just once before freeing the memory */
 	if (vars != NULL) {
@@ -84,11 +88,13 @@ int BCMATTACHFN(nvram_init) (void *si) {
 	return 0;
 }
 
-int BCMATTACHFN(nvram_append) (void *si, char *varlst, uint varsz) {
+int nvram_append(void *si, char *varlst, uint varsz)
+{
 	uint bufsz = VARS_T_OH;
 	vars_t *new;
 
-	if ((new = MALLOC(si_osh((si_t *) si), bufsz)) == NULL)
+	new = kmalloc(bufsz, GFP_ATOMIC);
+	if (new == NULL)
 		return BCME_NOMEM;
 
 	new->vars = varlst;
@@ -100,7 +106,8 @@ int BCMATTACHFN(nvram_append) (void *si, char *varlst, uint varsz) {
 	return BCME_OK;
 }
 
-void BCMUNINITFN(nvram_exit) (void *si) {
+void nvram_exit(void *si)
+{
 	vars_t *this, *next;
 	si_t *sih;
 
@@ -108,11 +115,11 @@ void BCMUNINITFN(nvram_exit) (void *si) {
 	this = vars;
 
 	if (this)
-		MFREE(si_osh(sih), this->vars, this->size);
+		kfree(this->vars);
 
 	while (this) {
 		next = this->next;
-		MFREE(si_osh(sih), this, this->bufsz);
+		kfree(this);
 		this = next;
 	}
 	vars = NULL;
@@ -127,9 +134,10 @@ static char *findvar(char *vars, char *lim, const char *name)
 
 	for (s = vars; (s < lim) && *s;) {
 		if ((bcmp(s, name, len) == 0) && (s[len] == '='))
-			return (&s[len + 1]);
+			return &s[len + 1];
 
-		while (*s++) ;
+		while (*s++)
+			;
 	}
 
 	return NULL;
@@ -140,26 +148,32 @@ char *nvram_get(const char *name)
 	char *v = NULL;
 	vars_t *cur;
 
-	for (cur = vars; cur; cur = cur->next)
-		if ((v = findvar(cur->vars, cur->vars + cur->size, name)))
+	for (cur = vars; cur; cur = cur->next) {
+		v = findvar(cur->vars, cur->vars + cur->size, name);
+		if (v)
 			break;
+	}
 
 	return v;
 }
 
-int BCMATTACHFN(nvram_set) (const char *name, const char *value) {
+int nvram_set(const char *name, const char *value)
+{
 	return 0;
 }
 
-int BCMATTACHFN(nvram_unset) (const char *name) {
+int nvram_unset(const char *name)
+{
 	return 0;
 }
 
-int BCMATTACHFN(nvram_reset) (void *si) {
+int nvram_reset(void *si)
+{
 	return 0;
 }
 
-int BCMATTACHFN(nvram_commit) (void) {
+int nvram_commit(void)
+{
 	return 0;
 }
 
@@ -174,7 +188,7 @@ int nvram_getall(char *buf, int count)
 		int acc;
 
 		from = this->vars;
-		lim = (char *)((uintptr) this->vars + this->size);
+		lim = (char *)(this->vars + this->size);
 		to = buf;
 		acc = 0;
 		while ((from < lim) && (*from)) {

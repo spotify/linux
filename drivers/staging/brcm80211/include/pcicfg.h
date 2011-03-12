@@ -103,29 +103,29 @@
 #define PCI_CAPPTR_PRESENT	0x0010
 
 typedef struct _pci_config_regs {
-	uint16 vendor;
-	uint16 device;
-	uint16 command;
-	uint16 status;
-	uint8 rev_id;
-	uint8 prog_if;
-	uint8 sub_class;
-	uint8 base_class;
-	uint8 cache_line_size;
-	uint8 latency_timer;
-	uint8 header_type;
-	uint8 bist;
-	uint32 base[PCI_BAR_MAX];
-	uint32 cardbus_cis;
-	uint16 subsys_vendor;
-	uint16 subsys_id;
-	uint32 baserom;
-	uint32 rsvd_a[PCR_RSVDA_MAX];
-	uint8 int_line;
-	uint8 int_pin;
-	uint8 min_gnt;
-	uint8 max_lat;
-	uint8 dev_dep[192];
+	u16 vendor;
+	u16 device;
+	u16 command;
+	u16 status;
+	u8 rev_id;
+	u8 prog_if;
+	u8 sub_class;
+	u8 base_class;
+	u8 cache_line_size;
+	u8 latency_timer;
+	u8 header_type;
+	u8 bist;
+	u32 base[PCI_BAR_MAX];
+	u32 cardbus_cis;
+	u16 subsys_vendor;
+	u16 subsys_id;
+	u32 baserom;
+	u32 rsvd_a[PCR_RSVDA_MAX];
+	u8 int_line;
+	u8 int_pin;
+	u8 min_gnt;
+	u8 max_lat;
+	u8 dev_dep[192];
 } pci_config_regs;
 
 #define	SZPCR		(sizeof (pci_config_regs))
@@ -331,45 +331,45 @@ typedef enum {
 #define	PPB_RSVDD_MAX		8
 
 typedef struct _ppb_config_regs {
-	uint16 vendor;
-	uint16 device;
-	uint16 command;
-	uint16 status;
-	uint8 rev_id;
-	uint8 prog_if;
-	uint8 sub_class;
-	uint8 base_class;
-	uint8 cache_line_size;
-	uint8 latency_timer;
-	uint8 header_type;
-	uint8 bist;
-	uint32 rsvd_a[PPB_RSVDA_MAX];
-	uint8 prim_bus;
-	uint8 sec_bus;
-	uint8 sub_bus;
-	uint8 sec_lat;
-	uint8 io_base;
-	uint8 io_lim;
-	uint16 sec_status;
-	uint16 mem_base;
-	uint16 mem_lim;
-	uint16 pf_mem_base;
-	uint16 pf_mem_lim;
-	uint32 pf_mem_base_hi;
-	uint32 pf_mem_lim_hi;
-	uint16 io_base_hi;
-	uint16 io_lim_hi;
-	uint16 subsys_vendor;
-	uint16 subsys_id;
-	uint32 rsvd_b;
-	uint8 rsvd_c;
-	uint8 int_pin;
-	uint16 bridge_ctrl;
-	uint8 chip_ctrl;
-	uint8 diag_ctrl;
-	uint16 arb_ctrl;
-	uint32 rsvd_d[PPB_RSVDD_MAX];
-	uint8 dev_dep[192];
+	u16 vendor;
+	u16 device;
+	u16 command;
+	u16 status;
+	u8 rev_id;
+	u8 prog_if;
+	u8 sub_class;
+	u8 base_class;
+	u8 cache_line_size;
+	u8 latency_timer;
+	u8 header_type;
+	u8 bist;
+	u32 rsvd_a[PPB_RSVDA_MAX];
+	u8 prim_bus;
+	u8 sec_bus;
+	u8 sub_bus;
+	u8 sec_lat;
+	u8 io_base;
+	u8 io_lim;
+	u16 sec_status;
+	u16 mem_base;
+	u16 mem_lim;
+	u16 pf_mem_base;
+	u16 pf_mem_lim;
+	u32 pf_mem_base_hi;
+	u32 pf_mem_lim_hi;
+	u16 io_base_hi;
+	u16 io_lim_hi;
+	u16 subsys_vendor;
+	u16 subsys_id;
+	u32 rsvd_b;
+	u8 rsvd_c;
+	u8 int_pin;
+	u16 bridge_ctrl;
+	u8 chip_ctrl;
+	u8 diag_ctrl;
+	u16 arb_ctrl;
+	u32 rsvd_d[PPB_RSVDD_MAX];
+	u8 dev_dep[192];
 } ppb_config_regs;
 
 /* PCI CAPABILITY DEFINES */
@@ -382,22 +382,22 @@ typedef struct _ppb_config_regs {
  * Valid for PCI and PCIE configurations
  */
 typedef struct _pciconfig_cap_msi {
-	uint8 capID;
-	uint8 nextptr;
-	uint16 msgctrl;
-	uint32 msgaddr;
+	u8 capID;
+	u8 nextptr;
+	u16 msgctrl;
+	u32 msgaddr;
 } pciconfig_cap_msi;
 
 /* Data structure to define the Power managment facility
  * Valid for PCI and PCIE configurations
  */
 typedef struct _pciconfig_cap_pwrmgmt {
-	uint8 capID;
-	uint8 nextptr;
-	uint16 pme_cap;
-	uint16 pme_sts_ctrl;
-	uint8 pme_bridge_ext;
-	uint8 data;
+	u8 capID;
+	u8 nextptr;
+	u16 pme_cap;
+	u16 pme_sts_ctrl;
+	u8 pme_bridge_ext;
+	u8 data;
 } pciconfig_cap_pwrmgmt;
 
 #define PME_CAP_PM_STATES (0x1f << 27)	/* Bits 31:27 states that can generate PME */
@@ -407,21 +407,21 @@ typedef struct _pciconfig_cap_pwrmgmt {
 
 /* Data structure to define the PCIE capability */
 typedef struct _pciconfig_cap_pcie {
-	uint8 capID;
-	uint8 nextptr;
-	uint16 pcie_cap;
-	uint32 dev_cap;
-	uint16 dev_ctrl;
-	uint16 dev_status;
-	uint32 link_cap;
-	uint16 link_ctrl;
-	uint16 link_status;
-	uint32 slot_cap;
-	uint16 slot_ctrl;
-	uint16 slot_status;
-	uint16 root_ctrl;
-	uint16 root_cap;
-	uint32 root_status;
+	u8 capID;
+	u8 nextptr;
+	u16 pcie_cap;
+	u32 dev_cap;
+	u16 dev_ctrl;
+	u16 dev_status;
+	u32 link_cap;
+	u16 link_ctrl;
+	u16 link_status;
+	u32 slot_cap;
+	u16 slot_ctrl;
+	u16 slot_status;
+	u16 root_ctrl;
+	u16 root_cap;
+	u32 root_status;
 } pciconfig_cap_pcie;
 
 /* PCIE Enhanced CAPABILITY DEFINES */
@@ -453,9 +453,9 @@ typedef struct _pciconfig_cap_pcie {
 
 /* Header to define the PCIE specific capabilities in the extended config space */
 typedef struct _pcie_enhanced_caphdr {
-	uint16 capID;
-	uint16 cap_ver:4;
-	uint16 next_ptr:12;
+	u16 capID;
+	u16 cap_ver:4;
+	u16 next_ptr:12;
 } pcie_enhanced_caphdr;
 
 /* Everything below is BRCM HND proprietary */

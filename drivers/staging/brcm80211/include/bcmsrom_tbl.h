@@ -22,10 +22,10 @@
 
 typedef struct {
 	const char *name;
-	uint32 revmask;
-	uint32 flags;
-	uint16 off;
-	uint16 mask;
+	u32 revmask;
+	u32 flags;
+	u16 off;
+	u16 mask;
 } sromvar_t;
 
 #define SRFL_MORE	1	/* value continues as described by the next entry */
@@ -447,9 +447,9 @@ static const sromvar_t perpath_pci_sromvars[] = {
 #endif				/* !defined(PHY_TYPE_NULL) */
 
 typedef struct {
-	uint16 phy_type;
-	uint16 bandrange;
-	uint16 chain;
+	u16 phy_type;
+	u16 bandrange;
+	u16 chain;
 	const char *vars;
 } pavars_t;
 
@@ -476,8 +476,8 @@ static const pavars_t pavars[] = {
 };
 
 typedef struct {
-	uint16 phy_type;
-	uint16 bandrange;
+	u16 phy_type;
+	u16 bandrange;
 	const char *vars;
 } povars_t;
 
@@ -499,8 +499,8 @@ static const povars_t povars[] = {
 };
 
 typedef struct {
-	uint8 tag;		/* Broadcom subtag name */
-	uint8 len;		/* Length field of the tuple, note that it includes the
+	u8 tag;		/* Broadcom subtag name */
+	u8 len;		/* Length field of the tuple, note that it includes the
 				 * subtag name (1 byte): 1 + tuple content length
 				 */
 	const char *params;

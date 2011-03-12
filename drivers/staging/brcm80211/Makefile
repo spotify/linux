@@ -15,7 +15,19 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-EXTRA_CFLAGS := -DBCMDBG -DWLC_HIGH -DSTA -DWME -DWL11N -DDBAND -DBCMDMA32 -DBCMNVRAMR -Idrivers/staging/brcm80211/sys -Idrivers/staging/brcm80211/phy -Idrivers/staging/brcm80211/util -Idrivers/staging/brcm80211/include -Wall -Wstrict-prototypes -Werror -Wmissing-prototypes
+ccflags-y :=					\
+	-DBCMDBG				\
+	-DWLC_HIGH				\
+	-DSTA					\
+	-DWME					\
+	-DWL11N					\
+	-DDBAND					\
+	-DBCMDMA32				\
+	-DBCMNVRAMR				\
+	-Idrivers/staging/brcm80211/sys		\
+	-Idrivers/staging/brcm80211/phy		\
+	-Idrivers/staging/brcm80211/util	\
+	-Idrivers/staging/brcm80211/include
 
 PCI_CFLAGS := -DWLC_LOW
 
@@ -26,7 +38,6 @@ BRCM80211_OFILES := \
 	util/bcmsrom.o \
 	util/bcmutils.o \
 	util/bcmwifi.o \
-	util/bcmwpa.o \
 	util/hndpmu.o \
 	util/linux_osl.o \
 	sys/wlc_alloc.o \
@@ -55,11 +66,11 @@ PCIFILES := \
 
 MODULEPFX := brcm80211
 
-obj-m	+= $(MODULEPFX).o
-
 # PCI driver
 ifeq ($(CONFIG_BRCM80211_PCI),y)
-EXTRA_CFLAGS += $(PCI_CFLAGS)
+obj-m	+= $(MODULEPFX).o
+ccflags-y += $(PCI_CFLAGS)
 $(MODULEPFX)-objs	= $(BRCM80211_OFILES) $(PCIFILES)
 endif
 
+obj-$(CONFIG_BRCMFMAC)    += brcmfmac/

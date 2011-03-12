@@ -18,7 +18,7 @@
 #define	_bcmwifi_h_
 
 /* A chanspec holds the channel number, band, bandwidth and control sideband */
-typedef uint16 chanspec_t;
+typedef u16 chanspec_t;
 
 /* channel defines */
 #define CH_UPPER_SB			0x01
@@ -31,7 +31,7 @@ typedef uint16 chanspec_t;
 #define WLC_MAX_2G_CHANNEL		CH_MAX_2G_CHANNEL	/* legacy define */
 #define	MAXCHANNEL		224	/* max # supported channels. The max channel no is 216,
 					 * this is that + 1 rounded up to a multiple of NBBY (8).
-					 * DO NOT MAKE it > 255: channels are uint8's all over
+					 * DO NOT MAKE it > 255: channels are u8's all over
 					 */
 
 #define WL_CHANSPEC_CHAN_MASK		0x00ff
@@ -74,7 +74,7 @@ typedef uint16 chanspec_t;
 					((channel) | (ctlsb) | WL_CHANSPEC_BW_40 | \
 					((channel) <= CH_MAX_2G_CHANNEL ? WL_CHANSPEC_BAND_2G : \
 					WL_CHANSPEC_BAND_5G))
-#define CHSPEC_CHANNEL(chspec)	((uint8)((chspec) & WL_CHANSPEC_CHAN_MASK))
+#define CHSPEC_CHANNEL(chspec)	((u8)((chspec) & WL_CHANSPEC_CHAN_MASK))
 #define CHSPEC_BAND(chspec)	((chspec) & WL_CHANSPEC_BAND_MASK)
 
 #ifdef WL11N_20MHZONLY
@@ -129,25 +129,10 @@ typedef uint16 chanspec_t;
 #define WLC_2G_25MHZ_OFFSET		5	/* 2.4GHz band channel offset */
 
 /*
- * Convert chanspec to ascii string
- * @param	chspec		chanspec format
- * @param	buf		ascii string of chanspec
- * @return	pointer to buf with room for at least CHANSPEC_STR_LEN bytes
- */
-extern char *wf_chspec_ntoa(chanspec_t chspec, char *buf);
-
-/*
- * Convert ascii string to chanspec
- * @param	a		pointer to input string
- * @return	>= 0 if successful or 0 otherwise
- */
-extern chanspec_t wf_chspec_aton(char *a);
-
-/*
  * Verify the chanspec is using a legal set of parameters, i.e. that the
  * chanspec specified a band, bw, ctl_sb and channel and that the
  * combination could be legal given any set of circumstances.
- * RETURNS: TRUE is the chanspec is malformed, false if it looks good.
+ * RETURNS: true is the chanspec is malformed, false if it looks good.
  */
 extern bool wf_chspec_malformed(chanspec_t chanspec);
 
@@ -156,7 +141,7 @@ extern bool wf_chspec_malformed(chanspec_t chanspec);
  * channels this is just the channel number, for 40MHZ channels it is the upper or lowre 20MHZ
  * sideband depending on the chanspec selected
  */
-extern uint8 wf_chspec_ctlchan(chanspec_t chspec);
+extern u8 wf_chspec_ctlchan(chanspec_t chspec);
 
 /*
  * This function returns the chanspec that control traffic is being sent on, for legacy

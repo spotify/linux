@@ -15,13 +15,14 @@
  */
 
 typedef struct wl_info wl_info_t;
-#include <typedefs.h>
+#include <linux/types.h>
+#include <bcmdefs.h>
 #include <d11ucode_ext.h>
 #include <wl_ucode.h>
 
-extern int wl_ucode_init_buf(wl_info_t * wl, void **pbuf, unsigned int idx);
-extern int wl_ucode_init_uint(wl_info_t * wl, unsigned *data, unsigned int idx);
-extern int wl_ucode_data_init(wl_info_t * wl);
+extern int wl_ucode_init_buf(wl_info_t *wl, void **pbuf, unsigned int idx);
+extern int wl_ucode_init_uint(wl_info_t *wl, unsigned *data, unsigned int idx);
+extern int wl_ucode_data_init(wl_info_t *wl);
 extern void wl_ucode_data_free(void);
 extern void wl_ucode_free_buf(void *);
 
@@ -34,14 +35,14 @@ d11init_t *d11lcn2initvals24;
 d11init_t *d11n0absinitvals16;
 d11init_t *d11n0bsinitvals16;
 d11init_t *d11n0initvals16;
-uint32 *bcm43xx_16_mimo;
-uint32 bcm43xx_16_mimosz;
-uint32 *bcm43xx_24_lcn;
-uint32 bcm43xx_24_lcnsz;
-uint32 *bcm43xx_bommajor;
-uint32 *bcm43xx_bomminor;
+u32 *bcm43xx_16_mimo;
+u32 bcm43xx_16_mimosz;
+u32 *bcm43xx_24_lcn;
+u32 bcm43xx_24_lcnsz;
+u32 *bcm43xx_bommajor;
+u32 *bcm43xx_bomminor;
 
-int wl_ucode_data_init(wl_info_t * wl)
+int wl_ucode_data_init(wl_info_t *wl)
 {
 	wl_ucode_init_buf(wl, (void **)&d11lcn0bsinitvals24,
 			  D11LCN0BSINITVALS24);

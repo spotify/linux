@@ -362,55 +362,55 @@ static __inline char *_wlc_rpc_id_lookup(const struct name_entry *tbl, int _id)
 #endif				/* BCMDBG */
 
 /* refer to txpwr_limits_t for each elements, mcs32 is the at the end for 1 byte */
-#define TXPOWER_XDR_SZ	(ROUNDUP(WLC_NUM_RATES_CCK, 4) + ROUNDUP(WLC_NUM_RATES_OFDM, 4) * 4 + \
-	ROUNDUP(WLC_NUM_RATES_MCS_1_STREAM, 4) * 6 + ROUNDUP(WLC_NUM_RATES_MCS_2_STREAM, 4) * 2 + \
-	ROUNDUP(1, 4))
+#define TXPOWER_XDR_SZ	(roundup(WLC_NUM_RATES_CCK, 4) + roundup(WLC_NUM_RATES_OFDM, 4) * 4 + \
+	roundup(WLC_NUM_RATES_MCS_1_STREAM, 4) * 6 + roundup(WLC_NUM_RATES_MCS_2_STREAM, 4) * 2 + \
+	roundup(1, 4))
 
 #define wlc_rpc_txpwr_limits(b, txpwr, op, err)	\
 	do {											\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->cck, WLC_NUM_RATES_CCK);		\
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->cck, WLC_NUM_RATES_CCK);		\
 		ASSERT(!(err));									\
 												\
 		/* 20 MHz Legacy OFDM rates with SISO transmission */				\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->ofdm, WLC_NUM_RATES_OFDM);	\
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->ofdm, WLC_NUM_RATES_OFDM);	\
 		ASSERT(!(err));									\
 												\
 		/* 20 MHz Legacy OFDM rates with CDD transmission */				\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->ofdm_cdd, WLC_NUM_RATES_OFDM);   \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->ofdm_cdd, WLC_NUM_RATES_OFDM);   \
 		ASSERT(!(err));									\
 												\
 		/* 40 MHz Legacy OFDM rates with SISO transmission */				\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->ofdm_40_siso, WLC_NUM_RATES_OFDM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->ofdm_40_siso, WLC_NUM_RATES_OFDM); \
 		ASSERT(!(err));									\
 												\
 		/* 40 MHz Legacy OFDM rates with CDD transmission */				\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->ofdm_40_cdd, WLC_NUM_RATES_OFDM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->ofdm_40_cdd, WLC_NUM_RATES_OFDM); \
 		ASSERT(!(err));									\
 												\
 		/* 20MHz MCS rates SISO/CDD/STBC/SDM */							 \
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->mcs_20_siso, WLC_NUM_RATES_MCS_1_STREAM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->mcs_20_siso, WLC_NUM_RATES_MCS_1_STREAM); \
 		ASSERT(!(err));									\
 												\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->mcs_20_cdd, WLC_NUM_RATES_MCS_1_STREAM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->mcs_20_cdd, WLC_NUM_RATES_MCS_1_STREAM); \
 		ASSERT(!(err));									\
 												\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->mcs_20_stbc, WLC_NUM_RATES_MCS_1_STREAM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->mcs_20_stbc, WLC_NUM_RATES_MCS_1_STREAM); \
 		ASSERT(!(err));									\
 												\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->mcs_20_mimo, WLC_NUM_RATES_MCS_2_STREAM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->mcs_20_mimo, WLC_NUM_RATES_MCS_2_STREAM); \
 		ASSERT(!(err));									\
 												\
 		/* 40MHz MCS rates SISO/CDD/STBC/SDM */							 \
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->mcs_40_siso, WLC_NUM_RATES_MCS_1_STREAM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->mcs_40_siso, WLC_NUM_RATES_MCS_1_STREAM); \
 		ASSERT(!(err));									\
 												\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->mcs_40_cdd, WLC_NUM_RATES_MCS_1_STREAM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->mcs_40_cdd, WLC_NUM_RATES_MCS_1_STREAM); \
 		ASSERT(!(err));									\
 												\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->mcs_40_stbc, WLC_NUM_RATES_MCS_1_STREAM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->mcs_40_stbc, WLC_NUM_RATES_MCS_1_STREAM); \
 		ASSERT(!(err));									\
 												\
-		(err) = bcm_xdr_##op##_uint8_vec((b), (txpwr)->mcs_40_mimo, WLC_NUM_RATES_MCS_2_STREAM); \
+		(err) = bcm_xdr_##op##_u8_vec((b), (txpwr)->mcs_40_mimo, WLC_NUM_RATES_MCS_2_STREAM); \
 		ASSERT(!(err));									\
 	} while (0)
 
@@ -420,40 +420,40 @@ typedef struct wlc_rpc_ctx {
 	wlc_hw_info_t *wlc_hw;
 } wlc_rpc_ctx_t;
 
-static INLINE rpc_buf_t *wlc_rpc_buf_alloc(rpc_info_t * rpc, bcm_xdr_buf_t * b,
+static inline rpc_buf_t *wlc_rpc_buf_alloc(rpc_info_t *rpc, bcm_xdr_buf_t *b,
 					   uint len, wlc_rpc_id_t rpc_id)
 {
 	rpc_buf_t *rpc_buf;
 
-	rpc_buf = bcm_rpc_buf_alloc(rpc, len + sizeof(uint32));
+	rpc_buf = bcm_rpc_buf_alloc(rpc, len + sizeof(u32));
 
 	if (!rpc_buf)
 		return NULL;
 
 	bcm_xdr_buf_init(b, bcm_rpc_buf_data(bcm_rpc_tp_get(rpc), rpc_buf),
-			 len + sizeof(uint32));
+			 len + sizeof(u32));
 
-	bcm_xdr_pack_uint32(b, rpc_id);
+	bcm_xdr_pack_u32(b, rpc_id);
 
 	return rpc_buf;
 }
 
 #if defined(BCMDBG)
 static __inline wlc_rpc_id_t
-wlc_rpc_id_get(struct rpc_info *rpc, rpc_buf_t * buf)
+wlc_rpc_id_get(struct rpc_info *rpc, rpc_buf_t *buf)
 {
 	wlc_rpc_id_t rpc_id;
 	bcm_xdr_buf_t b;
 
 	bcm_xdr_buf_init(&b, bcm_rpc_buf_data(bcm_rpc_tp_get(rpc), buf),
-			 sizeof(uint32));
+			 sizeof(u32));
 
-	bcm_xdr_unpack_uint32(&b, (uint32 *) ((uintptr) & rpc_id));
+	bcm_xdr_unpack_u32(&b, (u32 *)((unsigned long) & rpc_id));
 	return rpc_id;
 }
 #endif
 
-static __inline int _wlc_rpc_call(struct rpc_info *rpc, rpc_buf_t * send)
+static __inline int _wlc_rpc_call(struct rpc_info *rpc, rpc_buf_t *send)
 {
 	int _err = 0;
 #if defined(BCMDBG)
@@ -481,24 +481,24 @@ static __inline int _wlc_rpc_call(struct rpc_info *rpc, rpc_buf_t * send)
 #include <d11.h>
 
 #ifdef WLC_LOW
-extern void wlc_rpc_bmac_dispatch(wlc_rpc_ctx_t * rpc_ctx, struct rpc_buf *buf);
-extern void wlc_rpc_bmac_dump_txfifohist(wlc_hw_info_t * wlc_hw,
+extern void wlc_rpc_bmac_dispatch(wlc_rpc_ctx_t *rpc_ctx, struct rpc_buf *buf);
+extern void wlc_rpc_bmac_dump_txfifohist(wlc_hw_info_t *wlc_hw,
 					 bool dump_clear);
 #else
-extern void wlc_rpc_high_dispatch(wlc_rpc_ctx_t * ctx, struct rpc_buf *buf);
+extern void wlc_rpc_high_dispatch(wlc_rpc_ctx_t *ctx, struct rpc_buf *buf);
 #endif
 
-/* Packed structure for ease of transport across RPC bus along uint32 boundary */
+/* Packed structure for ease of transport across RPC bus along u32 boundary */
 typedef struct wlc_rpc_txstatus {
-	uint32 PAD_framelen;
-	uint32 status_frameid;
-	uint32 sequence_lasttxtime;
-	uint32 ackphyrxsh_phyerr;
+	u32 PAD_framelen;
+	u32 status_frameid;
+	u32 sequence_lasttxtime;
+	u32 ackphyrxsh_phyerr;
 } wlc_rpc_txstatus_t;
 
-static INLINE
-    void txstatus2rpc_txstatus(tx_status_t * txstatus,
-			       wlc_rpc_txstatus_t * rpc_txstatus)
+static inline
+    void txstatus2rpc_txstatus(tx_status_t *txstatus,
+			       wlc_rpc_txstatus_t *rpc_txstatus)
 {
 	rpc_txstatus->PAD_framelen = txstatus->framelen;
 	rpc_txstatus->status_frameid =
@@ -509,9 +509,9 @@ static INLINE
 	    (txstatus->ackphyrxsh << 16) | txstatus->phyerr;
 }
 
-static INLINE
-    void rpc_txstatus2txstatus(wlc_rpc_txstatus_t * rpc_txstatus,
-			       tx_status_t * txstatus)
+static inline
+    void rpc_txstatus2txstatus(wlc_rpc_txstatus_t *rpc_txstatus,
+			       tx_status_t *txstatus)
 {
 	txstatus->framelen = rpc_txstatus->PAD_framelen & 0xffff;
 	txstatus->status = (rpc_txstatus->status_frameid >> 16) & 0xffff;
@@ -522,6 +522,6 @@ static INLINE
 	txstatus->phyerr = rpc_txstatus->ackphyrxsh_phyerr & 0xffff;
 }
 
-extern void wlc_bmac_dngl_reboot(rpc_info_t * rpc);
+extern void wlc_bmac_dngl_reboot(rpc_info_t *rpc);
 
 #endif				/* WLC_RPC_H */

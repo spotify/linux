@@ -13,10 +13,11 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#include <typedefs.h>
+#include <linux/kernel.h>
+#include <linux/string.h>
 #include <bcmdefs.h>
 #include <osl.h>
+#include <linuxver.h>
 #include <stdarg.h>
 #include <bcmutils.h>
 #include <hndsoc.h>
@@ -47,8 +48,8 @@
 
 #define SROM_OFFSET(sih) ((sih->ccrev > 31) ? \
 	(((sih->cccaps & CC_CAP_SROM) == 0) ? NULL : \
-	 ((uint8 *)curmap + PCI_16KB0_CCREGS_OFFSET + CC_SROM_OTP)) : \
-	((uint8 *)curmap + PCI_BAR0_SPROM_OFFSET))
+	 ((u8 *)curmap + PCI_16KB0_CCREGS_OFFSET + CC_SROM_OTP)) : \
+	((u8 *)curmap + PCI_BAR0_SPROM_OFFSET))
 
 #if defined(BCMDBG)
 #define WRITE_ENABLE_DELAY	500	/* 500 ms after write enable/disable toggle */
@@ -65,38 +66,40 @@ extern uint _varsz;
 
 #define SROM_CIS_SINGLE	1
 
-static int initvars_srom_si(si_t * sih, osl_t * osh, void *curmap, char **vars,
-			    uint * count);
-static void _initvars_srom_pci(uint8 sromrev, uint16 * srom, uint off,
-			       varbuf_t * b);
-static int initvars_srom_pci(si_t * sih, void *curmap, char **vars,
-			     uint * count);
-static int initvars_flash_si(si_t * sih, char **vars, uint * count);
+static int initvars_srom_si(si_t *sih, osl_t *osh, void *curmap, char **vars,
+			    uint *count);
+static void _initvars_srom_pci(u8 sromrev, u16 *srom, uint off,
+			       varbuf_t *b);
+static int initvars_srom_pci(si_t *sih, void *curmap, char **vars,
+			     uint *count);
+static int initvars_flash_si(si_t *sih, char **vars, uint *count);
 #ifdef BCMSDIO
-static int initvars_cis_sdio(osl_t * osh, char **vars, uint * count);
-static int sprom_cmd_sdio(osl_t * osh, uint8 cmd);
-static int sprom_read_sdio(osl_t * osh, uint16 addr, uint16 * data);
+static int initvars_cis_sdio(osl_t *osh, char **vars, uint *count);
+static int sprom_cmd_sdio(osl_t *osh, u8 cmd);
+static int sprom_read_sdio(osl_t *osh, u16 addr, u16 *data);
 #endif				/* BCMSDIO */
-static int sprom_read_pci(osl_t * osh, si_t * sih, uint16 * sprom, uint wordoff,
-			  uint16 * buf, uint nwords, bool check_crc);
+static int sprom_read_pci(osl_t *osh, si_t *sih, u16 *sprom, uint wordoff,
+			  u16 *buf, uint nwords, bool check_crc);
 #if defined(BCMNVRAMR)
-static int otp_read_pci(osl_t * osh, si_t * sih, uint16 * buf, uint bufsz);
+static int otp_read_pci(osl_t *osh, si_t *sih, u16 *buf, uint bufsz);
 #endif
-static uint16 srom_cc_cmd(si_t * sih, osl_t * osh, void *ccregs, uint32 cmd,
-			  uint wordoff, uint16 data);
+static u16 srom_cc_cmd(si_t *sih, osl_t *osh, void *ccregs, u32 cmd,
+			  uint wordoff, u16 data);
 
-static int initvars_table(osl_t * osh, char *start, char *end, char **vars,
-			  uint * count);
-static int initvars_flash(si_t * sih, osl_t * osh, char **vp, uint len);
+static int initvars_table(osl_t *osh, char *start, char *end, char **vars,
+			  uint *count);
+static int initvars_flash(si_t *sih, osl_t *osh, char **vp, uint len);
 
 /* Initialization of varbuf structure */
-static void BCMATTACHFN(varbuf_init) (varbuf_t * b, char *buf, uint size) {
+static void varbuf_init(varbuf_t *b, char *buf, uint size)
+{
 	b->size = size;
 	b->base = b->buf = buf;
 }
 
 /* append a null terminated var=value string */
-static int BCMATTACHFN(varbuf_append) (varbuf_t * b, const char *fmt, ...) {
+static int varbuf_append(varbuf_t *b, const char *fmt, ...)
+{
 	va_list ap;
 	int r;
 	size_t len;
@@ -122,7 +125,8 @@ static int BCMATTACHFN(varbuf_append) (varbuf_t * b, const char *fmt, ...) {
 	}
 
 	/* Remove any earlier occurrence of the same variable */
-	if ((s = strchr(b->buf, '=')) != NULL) {
+	s = strchr(b->buf, '=');
+	if (s != NULL) {
 		len = (size_t) (s - b->buf);
 		for (s = b->base; s < b->buf;) {
 			if ((bcmp(s, b->buf, len) == 0) && s[len] == '=') {
@@ -134,7 +138,8 @@ static int BCMATTACHFN(varbuf_append) (varbuf_t * b, const char *fmt, ...) {
 				break;
 			}
 
-			while (*s++) ;
+			while (*s++)
+				;
 		}
 	}
 
@@ -150,16 +155,16 @@ static int BCMATTACHFN(varbuf_append) (varbuf_t * b, const char *fmt, ...) {
  * Initialize local vars from the right source for this platform.
  * Return 0 on success, nonzero on error.
  */
-int
-BCMATTACHFN(srom_var_init) (si_t * sih, uint bustype, void *curmap, osl_t * osh,
-			    char **vars, uint * count) {
+int srom_var_init(si_t *sih, uint bustype, void *curmap, osl_t *osh,
+		  char **vars, uint *count)
+{
 	uint len;
 
 	len = 0;
 
 	ASSERT(bustype == BUSTYPE(bustype));
 	if (vars == NULL || count == NULL)
-		return (0);
+		return 0;
 
 	*vars = NULL;
 	*count = 0;
@@ -172,7 +177,7 @@ BCMATTACHFN(srom_var_init) (si_t * sih, uint bustype, void *curmap, osl_t * osh,
 	case PCI_BUS:
 		ASSERT(curmap != NULL);
 		if (curmap == NULL)
-			return (-1);
+			return -1;
 
 		return initvars_srom_pci(sih, curmap, vars, count);
 
@@ -184,13 +189,13 @@ BCMATTACHFN(srom_var_init) (si_t * sih, uint bustype, void *curmap, osl_t * osh,
 	default:
 		ASSERT(0);
 	}
-	return (-1);
+	return -1;
 }
 
 /* support only 16-bit word read from srom */
 int
-srom_read(si_t * sih, uint bustype, void *curmap, osl_t * osh,
-	  uint byteoff, uint nbytes, uint16 * buf, bool check_crc)
+srom_read(si_t *sih, uint bustype, void *curmap, osl_t *osh,
+	  uint byteoff, uint nbytes, u16 *buf, bool check_crc)
 {
 	uint off, nw;
 #ifdef BCMSDIO
@@ -211,9 +216,9 @@ srom_read(si_t * sih, uint bustype, void *curmap, osl_t * osh,
 			return 1;
 
 		if (si_is_sprom_available(sih)) {
-			uint16 *srom;
+			u16 *srom;
 
-			srom = (uint16 *) SROM_OFFSET(sih);
+			srom = (u16 *) SROM_OFFSET(sih);
 			if (srom == NULL)
 				return 1;
 
@@ -233,7 +238,7 @@ srom_read(si_t * sih, uint bustype, void *curmap, osl_t * osh,
 		nw = nbytes / 2;
 		for (i = 0; i < nw; i++) {
 			if (sprom_read_sdio
-			    (osh, (uint16) (off + i), (uint16 *) (buf + i)))
+			    (osh, (u16) (off + i), (u16 *) (buf + i)))
 				return 1;
 		}
 #endif				/* BCMSDIO */
@@ -246,150 +251,143 @@ srom_read(si_t * sih, uint bustype, void *curmap, osl_t * osh,
 	return 0;
 }
 
-static const char BCMATTACHDATA(vstr_manf)[] = "manf=%s";
-static const char BCMATTACHDATA(vstr_productname)[] = "productname=%s";
-static const char BCMATTACHDATA(vstr_manfid)[] = "manfid=0x%x";
-static const char BCMATTACHDATA(vstr_prodid)[] = "prodid=0x%x";
+static const char vstr_manf[] = "manf=%s";
+static const char vstr_productname[] = "productname=%s";
+static const char vstr_manfid[] = "manfid=0x%x";
+static const char vstr_prodid[] = "prodid=0x%x";
 #ifdef BCMSDIO
-static const char BCMATTACHDATA(vstr_sdmaxspeed)[] = "sdmaxspeed=%d";
-static const char BCMATTACHDATA(vstr_sdmaxblk)[][13] =
-{
+static const char vstr_sdmaxspeed[] = "sdmaxspeed=%d";
+static const char vstr_sdmaxblk[][13] = {
 "sdmaxblk0=%d", "sdmaxblk1=%d", "sdmaxblk2=%d"};
 #endif
-static const char BCMATTACHDATA(vstr_regwindowsz)[] = "regwindowsz=%d";
-static const char BCMATTACHDATA(vstr_sromrev)[] = "sromrev=%d";
-static const char BCMATTACHDATA(vstr_chiprev)[] = "chiprev=%d";
-static const char BCMATTACHDATA(vstr_subvendid)[] = "subvendid=0x%x";
-static const char BCMATTACHDATA(vstr_subdevid)[] = "subdevid=0x%x";
-static const char BCMATTACHDATA(vstr_boardrev)[] = "boardrev=0x%x";
-static const char BCMATTACHDATA(vstr_aa2g)[] = "aa2g=0x%x";
-static const char BCMATTACHDATA(vstr_aa5g)[] = "aa5g=0x%x";
-static const char BCMATTACHDATA(vstr_ag)[] = "ag%d=0x%x";
-static const char BCMATTACHDATA(vstr_cc)[] = "cc=%d";
-static const char BCMATTACHDATA(vstr_opo)[] = "opo=%d";
-static const char BCMATTACHDATA(vstr_pa0b)[][9] =
-{
+static const char vstr_regwindowsz[] = "regwindowsz=%d";
+static const char vstr_sromrev[] = "sromrev=%d";
+static const char vstr_chiprev[] = "chiprev=%d";
+static const char vstr_subvendid[] = "subvendid=0x%x";
+static const char vstr_subdevid[] = "subdevid=0x%x";
+static const char vstr_boardrev[] = "boardrev=0x%x";
+static const char vstr_aa2g[] = "aa2g=0x%x";
+static const char vstr_aa5g[] = "aa5g=0x%x";
+static const char vstr_ag[] = "ag%d=0x%x";
+static const char vstr_cc[] = "cc=%d";
+static const char vstr_opo[] = "opo=%d";
+static const char vstr_pa0b[][9] = {
 "pa0b0=%d", "pa0b1=%d", "pa0b2=%d"};
 
-static const char BCMATTACHDATA(vstr_pa0itssit)[] = "pa0itssit=%d";
-static const char BCMATTACHDATA(vstr_pa0maxpwr)[] = "pa0maxpwr=%d";
-static const char BCMATTACHDATA(vstr_pa1b)[][9] =
-{
+static const char vstr_pa0itssit[] = "pa0itssit=%d";
+static const char vstr_pa0maxpwr[] = "pa0maxpwr=%d";
+static const char vstr_pa1b[][9] = {
 "pa1b0=%d", "pa1b1=%d", "pa1b2=%d"};
 
-static const char BCMATTACHDATA(vstr_pa1lob)[][11] =
-{
+static const char vstr_pa1lob[][11] = {
 "pa1lob0=%d", "pa1lob1=%d", "pa1lob2=%d"};
 
-static const char BCMATTACHDATA(vstr_pa1hib)[][11] =
-{
+static const char vstr_pa1hib[][11] = {
 "pa1hib0=%d", "pa1hib1=%d", "pa1hib2=%d"};
 
-static const char BCMATTACHDATA(vstr_pa1itssit)[] = "pa1itssit=%d";
-static const char BCMATTACHDATA(vstr_pa1maxpwr)[] = "pa1maxpwr=%d";
-static const char BCMATTACHDATA(vstr_pa1lomaxpwr)[] = "pa1lomaxpwr=%d";
-static const char BCMATTACHDATA(vstr_pa1himaxpwr)[] = "pa1himaxpwr=%d";
-static const char BCMATTACHDATA(vstr_oem)[] =
+static const char vstr_pa1itssit[] = "pa1itssit=%d";
+static const char vstr_pa1maxpwr[] = "pa1maxpwr=%d";
+static const char vstr_pa1lomaxpwr[] = "pa1lomaxpwr=%d";
+static const char vstr_pa1himaxpwr[] = "pa1himaxpwr=%d";
+static const char vstr_oem[] =
     "oem=%02x%02x%02x%02x%02x%02x%02x%02x";
-static const char BCMATTACHDATA(vstr_boardflags)[] = "boardflags=0x%x";
-static const char BCMATTACHDATA(vstr_boardflags2)[] = "boardflags2=0x%x";
-static const char BCMATTACHDATA(vstr_ledbh)[] = "ledbh%d=0x%x";
-static const char BCMATTACHDATA(vstr_noccode)[] = "ccode=0x0";
-static const char BCMATTACHDATA(vstr_ccode)[] = "ccode=%c%c";
-static const char BCMATTACHDATA(vstr_cctl)[] = "cctl=0x%x";
-static const char BCMATTACHDATA(vstr_cckpo)[] = "cckpo=0x%x";
-static const char BCMATTACHDATA(vstr_ofdmpo)[] = "ofdmpo=0x%x";
-static const char BCMATTACHDATA(vstr_rdlid)[] = "rdlid=0x%x";
-static const char BCMATTACHDATA(vstr_rdlrndis)[] = "rdlrndis=%d";
-static const char BCMATTACHDATA(vstr_rdlrwu)[] = "rdlrwu=%d";
-static const char BCMATTACHDATA(vstr_usbfs)[] = "usbfs=%d";
-static const char BCMATTACHDATA(vstr_wpsgpio)[] = "wpsgpio=%d";
-static const char BCMATTACHDATA(vstr_wpsled)[] = "wpsled=%d";
-static const char BCMATTACHDATA(vstr_rdlsn)[] = "rdlsn=%d";
-static const char BCMATTACHDATA(vstr_rssismf2g)[] = "rssismf2g=%d";
-static const char BCMATTACHDATA(vstr_rssismc2g)[] = "rssismc2g=%d";
-static const char BCMATTACHDATA(vstr_rssisav2g)[] = "rssisav2g=%d";
-static const char BCMATTACHDATA(vstr_bxa2g)[] = "bxa2g=%d";
-static const char BCMATTACHDATA(vstr_rssismf5g)[] = "rssismf5g=%d";
-static const char BCMATTACHDATA(vstr_rssismc5g)[] = "rssismc5g=%d";
-static const char BCMATTACHDATA(vstr_rssisav5g)[] = "rssisav5g=%d";
-static const char BCMATTACHDATA(vstr_bxa5g)[] = "bxa5g=%d";
-static const char BCMATTACHDATA(vstr_tri2g)[] = "tri2g=%d";
-static const char BCMATTACHDATA(vstr_tri5gl)[] = "tri5gl=%d";
-static const char BCMATTACHDATA(vstr_tri5g)[] = "tri5g=%d";
-static const char BCMATTACHDATA(vstr_tri5gh)[] = "tri5gh=%d";
-static const char BCMATTACHDATA(vstr_rxpo2g)[] = "rxpo2g=%d";
-static const char BCMATTACHDATA(vstr_rxpo5g)[] = "rxpo5g=%d";
-static const char BCMATTACHDATA(vstr_boardtype)[] = "boardtype=0x%x";
-static const char BCMATTACHDATA(vstr_leddc)[] = "leddc=0x%04x";
-static const char BCMATTACHDATA(vstr_vendid)[] = "vendid=0x%x";
-static const char BCMATTACHDATA(vstr_devid)[] = "devid=0x%x";
-static const char BCMATTACHDATA(vstr_xtalfreq)[] = "xtalfreq=%d";
-static const char BCMATTACHDATA(vstr_txchain)[] = "txchain=0x%x";
-static const char BCMATTACHDATA(vstr_rxchain)[] = "rxchain=0x%x";
-static const char BCMATTACHDATA(vstr_antswitch)[] = "antswitch=0x%x";
-static const char BCMATTACHDATA(vstr_regrev)[] = "regrev=0x%x";
-static const char BCMATTACHDATA(vstr_antswctl2g)[] = "antswctl2g=0x%x";
-static const char BCMATTACHDATA(vstr_triso2g)[] = "triso2g=0x%x";
-static const char BCMATTACHDATA(vstr_pdetrange2g)[] = "pdetrange2g=0x%x";
-static const char BCMATTACHDATA(vstr_extpagain2g)[] = "extpagain2g=0x%x";
-static const char BCMATTACHDATA(vstr_tssipos2g)[] = "tssipos2g=0x%x";
-static const char BCMATTACHDATA(vstr_antswctl5g)[] = "antswctl5g=0x%x";
-static const char BCMATTACHDATA(vstr_triso5g)[] = "triso5g=0x%x";
-static const char BCMATTACHDATA(vstr_pdetrange5g)[] = "pdetrange5g=0x%x";
-static const char BCMATTACHDATA(vstr_extpagain5g)[] = "extpagain5g=0x%x";
-static const char BCMATTACHDATA(vstr_tssipos5g)[] = "tssipos5g=0x%x";
-static const char BCMATTACHDATA(vstr_maxp2ga0)[] = "maxp2ga0=0x%x";
-static const char BCMATTACHDATA(vstr_itt2ga0)[] = "itt2ga0=0x%x";
-static const char BCMATTACHDATA(vstr_pa)[] = "pa%dgw%da%d=0x%x";
-static const char BCMATTACHDATA(vstr_pahl)[] = "pa%dg%cw%da%d=0x%x";
-static const char BCMATTACHDATA(vstr_maxp5ga0)[] = "maxp5ga0=0x%x";
-static const char BCMATTACHDATA(vstr_itt5ga0)[] = "itt5ga0=0x%x";
-static const char BCMATTACHDATA(vstr_maxp5gha0)[] = "maxp5gha0=0x%x";
-static const char BCMATTACHDATA(vstr_maxp5gla0)[] = "maxp5gla0=0x%x";
-static const char BCMATTACHDATA(vstr_maxp2ga1)[] = "maxp2ga1=0x%x";
-static const char BCMATTACHDATA(vstr_itt2ga1)[] = "itt2ga1=0x%x";
-static const char BCMATTACHDATA(vstr_maxp5ga1)[] = "maxp5ga1=0x%x";
-static const char BCMATTACHDATA(vstr_itt5ga1)[] = "itt5ga1=0x%x";
-static const char BCMATTACHDATA(vstr_maxp5gha1)[] = "maxp5gha1=0x%x";
-static const char BCMATTACHDATA(vstr_maxp5gla1)[] = "maxp5gla1=0x%x";
-static const char BCMATTACHDATA(vstr_cck2gpo)[] = "cck2gpo=0x%x";
-static const char BCMATTACHDATA(vstr_ofdm2gpo)[] = "ofdm2gpo=0x%x";
-static const char BCMATTACHDATA(vstr_ofdm5gpo)[] = "ofdm5gpo=0x%x";
-static const char BCMATTACHDATA(vstr_ofdm5glpo)[] = "ofdm5glpo=0x%x";
-static const char BCMATTACHDATA(vstr_ofdm5ghpo)[] = "ofdm5ghpo=0x%x";
-static const char BCMATTACHDATA(vstr_cddpo)[] = "cddpo=0x%x";
-static const char BCMATTACHDATA(vstr_stbcpo)[] = "stbcpo=0x%x";
-static const char BCMATTACHDATA(vstr_bw40po)[] = "bw40po=0x%x";
-static const char BCMATTACHDATA(vstr_bwduppo)[] = "bwduppo=0x%x";
-static const char BCMATTACHDATA(vstr_mcspo)[] = "mcs%dgpo%d=0x%x";
-static const char BCMATTACHDATA(vstr_mcspohl)[] = "mcs%dg%cpo%d=0x%x";
-static const char BCMATTACHDATA(vstr_custom)[] = "customvar%d=0x%x";
-static const char BCMATTACHDATA(vstr_cckdigfilttype)[] = "cckdigfilttype=%d";
-static const char BCMATTACHDATA(vstr_boardnum)[] = "boardnum=%d";
-static const char BCMATTACHDATA(vstr_macaddr)[] = "macaddr=%s";
-static const char BCMATTACHDATA(vstr_usbepnum)[] = "usbepnum=0x%x";
-static const char BCMATTACHDATA(vstr_end)[] = "END\0";
+static const char vstr_boardflags[] = "boardflags=0x%x";
+static const char vstr_boardflags2[] = "boardflags2=0x%x";
+static const char vstr_ledbh[] = "ledbh%d=0x%x";
+static const char vstr_noccode[] = "ccode=0x0";
+static const char vstr_ccode[] = "ccode=%c%c";
+static const char vstr_cctl[] = "cctl=0x%x";
+static const char vstr_cckpo[] = "cckpo=0x%x";
+static const char vstr_ofdmpo[] = "ofdmpo=0x%x";
+static const char vstr_rdlid[] = "rdlid=0x%x";
+static const char vstr_rdlrndis[] = "rdlrndis=%d";
+static const char vstr_rdlrwu[] = "rdlrwu=%d";
+static const char vstr_usbfs[] = "usbfs=%d";
+static const char vstr_wpsgpio[] = "wpsgpio=%d";
+static const char vstr_wpsled[] = "wpsled=%d";
+static const char vstr_rdlsn[] = "rdlsn=%d";
+static const char vstr_rssismf2g[] = "rssismf2g=%d";
+static const char vstr_rssismc2g[] = "rssismc2g=%d";
+static const char vstr_rssisav2g[] = "rssisav2g=%d";
+static const char vstr_bxa2g[] = "bxa2g=%d";
+static const char vstr_rssismf5g[] = "rssismf5g=%d";
+static const char vstr_rssismc5g[] = "rssismc5g=%d";
+static const char vstr_rssisav5g[] = "rssisav5g=%d";
+static const char vstr_bxa5g[] = "bxa5g=%d";
+static const char vstr_tri2g[] = "tri2g=%d";
+static const char vstr_tri5gl[] = "tri5gl=%d";
+static const char vstr_tri5g[] = "tri5g=%d";
+static const char vstr_tri5gh[] = "tri5gh=%d";
+static const char vstr_rxpo2g[] = "rxpo2g=%d";
+static const char vstr_rxpo5g[] = "rxpo5g=%d";
+static const char vstr_boardtype[] = "boardtype=0x%x";
+static const char vstr_leddc[] = "leddc=0x%04x";
+static const char vstr_vendid[] = "vendid=0x%x";
+static const char vstr_devid[] = "devid=0x%x";
+static const char vstr_xtalfreq[] = "xtalfreq=%d";
+static const char vstr_txchain[] = "txchain=0x%x";
+static const char vstr_rxchain[] = "rxchain=0x%x";
+static const char vstr_antswitch[] = "antswitch=0x%x";
+static const char vstr_regrev[] = "regrev=0x%x";
+static const char vstr_antswctl2g[] = "antswctl2g=0x%x";
+static const char vstr_triso2g[] = "triso2g=0x%x";
+static const char vstr_pdetrange2g[] = "pdetrange2g=0x%x";
+static const char vstr_extpagain2g[] = "extpagain2g=0x%x";
+static const char vstr_tssipos2g[] = "tssipos2g=0x%x";
+static const char vstr_antswctl5g[] = "antswctl5g=0x%x";
+static const char vstr_triso5g[] = "triso5g=0x%x";
+static const char vstr_pdetrange5g[] = "pdetrange5g=0x%x";
+static const char vstr_extpagain5g[] = "extpagain5g=0x%x";
+static const char vstr_tssipos5g[] = "tssipos5g=0x%x";
+static const char vstr_maxp2ga0[] = "maxp2ga0=0x%x";
+static const char vstr_itt2ga0[] = "itt2ga0=0x%x";
+static const char vstr_pa[] = "pa%dgw%da%d=0x%x";
+static const char vstr_pahl[] = "pa%dg%cw%da%d=0x%x";
+static const char vstr_maxp5ga0[] = "maxp5ga0=0x%x";
+static const char vstr_itt5ga0[] = "itt5ga0=0x%x";
+static const char vstr_maxp5gha0[] = "maxp5gha0=0x%x";
+static const char vstr_maxp5gla0[] = "maxp5gla0=0x%x";
+static const char vstr_maxp2ga1[] = "maxp2ga1=0x%x";
+static const char vstr_itt2ga1[] = "itt2ga1=0x%x";
+static const char vstr_maxp5ga1[] = "maxp5ga1=0x%x";
+static const char vstr_itt5ga1[] = "itt5ga1=0x%x";
+static const char vstr_maxp5gha1[] = "maxp5gha1=0x%x";
+static const char vstr_maxp5gla1[] = "maxp5gla1=0x%x";
+static const char vstr_cck2gpo[] = "cck2gpo=0x%x";
+static const char vstr_ofdm2gpo[] = "ofdm2gpo=0x%x";
+static const char vstr_ofdm5gpo[] = "ofdm5gpo=0x%x";
+static const char vstr_ofdm5glpo[] = "ofdm5glpo=0x%x";
+static const char vstr_ofdm5ghpo[] = "ofdm5ghpo=0x%x";
+static const char vstr_cddpo[] = "cddpo=0x%x";
+static const char vstr_stbcpo[] = "stbcpo=0x%x";
+static const char vstr_bw40po[] = "bw40po=0x%x";
+static const char vstr_bwduppo[] = "bwduppo=0x%x";
+static const char vstr_mcspo[] = "mcs%dgpo%d=0x%x";
+static const char vstr_mcspohl[] = "mcs%dg%cpo%d=0x%x";
+static const char vstr_custom[] = "customvar%d=0x%x";
+static const char vstr_cckdigfilttype[] = "cckdigfilttype=%d";
+static const char vstr_boardnum[] = "boardnum=%d";
+static const char vstr_macaddr[] = "macaddr=%s";
+static const char vstr_usbepnum[] = "usbepnum=0x%x";
+static const char vstr_end[] = "END\0";
 
-uint8 patch_pair = 0;
+u8 patch_pair;
 
 /* For dongle HW, accept partial calibration parameters */
 #define BCMDONGLECASE(n)
 
-int
-BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
-			    char **vars, uint * count)
+int srom_parsecis(osl_t *osh, u8 *pcis[], uint ciscnt, char **vars, uint *count)
 {
 	char eabuf[32];
 	char *base;
 	varbuf_t b;
-	uint8 *cis, tup, tlen, sromrev = 1;
+	u8 *cis, tup, tlen, sromrev = 1;
 	int i, j;
-	bool ag_init = FALSE;
-	uint32 w32;
+	bool ag_init = false;
+	u32 w32;
 	uint funcid;
 	uint cisnum;
-	int32 boardnum;
+	s32 boardnum;
 	int err;
 	bool standard_cis;
 
@@ -398,7 +396,7 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 
 	boardnum = -1;
 
-	base = MALLOC(osh, MAXSZ_NVRAM_VARS);
+	base = kmalloc(MAXSZ_NVRAM_VARS, GFP_ATOMIC);
 	ASSERT(base != NULL);
 	if (!base)
 		return -2;
@@ -410,7 +408,7 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 		cis = *pcis++;
 		i = 0;
 		funcid = 0;
-		standard_cis = TRUE;
+		standard_cis = true;
 		do {
 			if (standard_cis) {
 				tup = cis[i++];
@@ -462,7 +460,7 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 				case CISTPL_FID_SDIO:
 #ifdef BCMSDIO
 					if (cis[i] == 0) {
-						uint8 spd = cis[i + 3];
+						u8 spd = cis[i + 3];
 						static int base[] = {
 							-1, 10, 12, 13, 15, 20,
 							    25, 30,
@@ -504,10 +502,8 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 					    && !(ETHER_ISMULTI(&cis[i + 2]))) {
 						ASSERT(cis[i + 1] ==
 						       ETHER_ADDR_LEN);
-						bcm_ether_ntoa((struct
-								ether_addr *)
-							       &cis[i + 2],
-							       eabuf);
+						snprintf(eabuf, sizeof(eabuf),
+							"%pM", &cis[i + 2]);
 
 						/* set boardnum if HNBU_BOARDNUM not seen yet */
 						if (boardnum == -1)
@@ -694,7 +690,7 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 					 * after this tuple
 					 */
 					tlen++;
-					standard_cis = FALSE;
+					standard_cis = false;
 					break;
 
 				case HNBU_USBEPNUM:
@@ -724,7 +720,7 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 					if (tlen >= 5)
 						varbuf_append(&b, vstr_ag, 3,
 							      cis[i + 4]);
-					ag_init = TRUE;
+					ag_init = true;
 					break;
 
 				case HNBU_ANT5G:
@@ -976,10 +972,8 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 				case HNBU_MACADDR:
 					if (!(ETHER_ISNULLADDR(&cis[i + 1])) &&
 					    !(ETHER_ISMULTI(&cis[i + 1]))) {
-						bcm_ether_ntoa((struct
-								ether_addr *)
-							       &cis[i + 1],
-							       eabuf);
+						snprintf(eabuf, sizeof(eabuf),
+							"%pM", &cis[i + 1]);
 
 						/* set boardnum if HNBU_BOARDNUM not seen yet */
 						if (boardnum == -1)
@@ -1012,7 +1006,7 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 					break;
 
 				case HNBU_FEM:{
-						uint16 fem =
+						u16 fem =
 						    (cis[i + 2] << 8) + cis[i +
 									    1];
 						varbuf_append(&b,
@@ -1334,8 +1328,8 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 #if defined(BCMSDIO)
 				case HNBU_SROM3SWRGN:
 					if (tlen >= 73) {
-						uint16 srom[35];
-						uint8 srev = cis[i + 1 + 70];
+						u16 srom[35];
+						u8 srev = cis[i + 1 + 70];
 						ASSERT(srev == 3);
 						/* make tuple value 16-bit aligned and parse it */
 						bcopy(&cis[i + 1], srom,
@@ -1344,7 +1338,7 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 								   SROM3_SWRGN_OFF,
 								   &b);
 						/* 2.4G antenna gain is included in SROM */
-						ag_init = TRUE;
+						ag_init = true;
 						/* Ethernet MAC address is included in SROM */
 						eabuf[0] = 0;
 						boardnum = -1;
@@ -1392,7 +1386,7 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 	}
 
 	/* if there is no antenna gain field, set default */
-	if (getvar(NULL, "ag0") == NULL && ag_init == FALSE) {
+	if (getvar(NULL, "ag0") == NULL && ag_init == false) {
 		varbuf_append(&b, vstr_ag, 0, 0xff);
 	}
 
@@ -1403,16 +1397,16 @@ BCMATTACHFN(srom_parsecis) (osl_t * osh, uint8 * pcis[], uint ciscnt,
 	ASSERT(b.buf - base <= MAXSZ_NVRAM_VARS);
 	err = initvars_table(osh, base, b.buf, vars, count);
 
-	MFREE(osh, base, MAXSZ_NVRAM_VARS);
+	kfree(base);
 	return err;
 }
 
 /* In chips with chipcommon rev 32 and later, the srom is in chipcommon,
  * not in the bus cores.
  */
-static uint16
-srom_cc_cmd(si_t * sih, osl_t * osh, void *ccregs, uint32 cmd, uint wordoff,
-	    uint16 data)
+static u16
+srom_cc_cmd(si_t *sih, osl_t *osh, void *ccregs, u32 cmd, uint wordoff,
+	    u16 data)
 {
 	chipcregs_t *cc = (chipcregs_t *) ccregs;
 	uint wait_cnt = 1000;
@@ -1435,7 +1429,7 @@ srom_cc_cmd(si_t * sih, osl_t * osh, void *ccregs, uint32 cmd, uint wordoff,
 		return 0xffff;
 	}
 	if (cmd == SRC_OP_READ)
-		return (uint16) R_REG(osh, &cc->sromdata);
+		return (u16) R_REG(osh, &cc->sromdata);
 	else
 		return 0xffff;
 }
@@ -1445,8 +1439,8 @@ srom_cc_cmd(si_t * sih, osl_t * osh, void *ccregs, uint32 cmd, uint wordoff,
  * Return 0 on success, nonzero on error.
  */
 static int
-sprom_read_pci(osl_t * osh, si_t * sih, uint16 * sprom, uint wordoff,
-	       uint16 * buf, uint nwords, bool check_crc)
+sprom_read_pci(osl_t *osh, si_t *sih, u16 *sprom, uint wordoff,
+	       u16 *buf, uint nwords, bool check_crc)
 {
 	int err = 0;
 	uint i;
@@ -1460,7 +1454,7 @@ sprom_read_pci(osl_t * osh, si_t * sih, uint16 * sprom, uint wordoff,
 			if ((sih->cccaps & CC_CAP_SROM) == 0)
 				return 1;
 
-			ccregs = (void *)((uint8 *) sprom - CC_SROM_OTP);
+			ccregs = (void *)((u8 *) sprom - CC_SROM_OTP);
 			buf[i] =
 			    srom_cc_cmd(sih, osh, ccregs, SRC_OP_READ,
 					wordoff + i, 0);
@@ -1492,7 +1486,7 @@ sprom_read_pci(osl_t * osh, si_t * sih, uint16 * sprom, uint wordoff,
 
 		/* fixup the endianness so crc8 will pass */
 		htol16_buf(buf, nwords * 2);
-		if (hndcrc8((uint8 *) buf, nwords * 2, CRC8_INIT_VALUE) !=
+		if (hndcrc8((u8 *) buf, nwords * 2, CRC8_INIT_VALUE) !=
 		    CRC8_GOOD_VALUE) {
 			/* DBG only pci always read srom4 first, then srom8/9 */
 			/* BS_ERROR(("%s: bad crc\n", __func__)); */
@@ -1505,26 +1499,25 @@ sprom_read_pci(osl_t * osh, si_t * sih, uint16 * sprom, uint wordoff,
 }
 
 #if defined(BCMNVRAMR)
-static int otp_read_pci(osl_t * osh, si_t * sih, uint16 * buf, uint bufsz)
+static int otp_read_pci(osl_t *osh, si_t *sih, u16 *buf, uint bufsz)
 {
-	uint8 *otp;
+	u8 *otp;
 	uint sz = OTP_SZ_MAX / 2;	/* size in words */
 	int err = 0;
 
 	ASSERT(bufsz <= OTP_SZ_MAX);
 
-	if ((otp = MALLOC(osh, OTP_SZ_MAX)) == NULL) {
+	otp = kzalloc(OTP_SZ_MAX, GFP_ATOMIC);
+	if (otp == NULL) {
 		return BCME_ERROR;
 	}
 
-	bzero(otp, OTP_SZ_MAX);
-
-	err = otp_read_region(sih, OTP_HW_RGN, (uint16 *) otp, &sz);
+	err = otp_read_region(sih, OTP_HW_RGN, (u16 *) otp, &sz);
 
 	bcopy(otp, buf, bufsz);
 
 	if (otp)
-		MFREE(osh, otp, OTP_SZ_MAX);
+		kfree(otp);
 
 	/* Check CRC */
 	if (buf[0] == 0xffff) {
@@ -1539,7 +1532,7 @@ static int otp_read_pci(osl_t * osh, si_t * sih, uint16 * buf, uint bufsz)
 
 	/* fixup the endianness so crc8 will pass */
 	htol16_buf(buf, bufsz);
-	if (hndcrc8((uint8 *) buf, SROM4_WORDS * 2, CRC8_INIT_VALUE) !=
+	if (hndcrc8((u8 *) buf, SROM4_WORDS * 2, CRC8_INIT_VALUE) !=
 	    CRC8_GOOD_VALUE) {
 		BS_ERROR(("%s: bad crc\n", __func__));
 		err = 1;
@@ -1554,14 +1547,14 @@ static int otp_read_pci(osl_t * osh, si_t * sih, uint16 * buf, uint bufsz)
 * Create variable table from memory.
 * Return 0 on success, nonzero on error.
 */
-static int
-BCMATTACHFN(initvars_table) (osl_t * osh, char *start, char *end, char **vars,
-			     uint * count) {
+static int initvars_table(osl_t *osh, char *start, char *end, char **vars,
+			  uint *count)
+{
 	int c = (int)(end - start);
 
 	/* do it only when there is more than just the null string */
 	if (c > 1) {
-		char *vp = MALLOC(osh, c);
+		char *vp = kmalloc(c, GFP_ATOMIC);
 		ASSERT(vp != NULL);
 		if (!vp)
 			return BCME_NOMEM;
@@ -1581,8 +1574,8 @@ BCMATTACHFN(initvars_table) (osl_t * osh, char *start, char *end, char **vars,
  * of the table upon enter and to the end of the table upon exit when success.
  * Return 0 on success, nonzero on error.
  */
-static int
-BCMATTACHFN(initvars_flash) (si_t * sih, osl_t * osh, char **base, uint len) {
+static int initvars_flash(si_t *sih, osl_t *osh, char **base, uint len)
+{
 	char *vp = *base;
 	char *flash;
 	int err;
@@ -1591,9 +1584,11 @@ BCMATTACHFN(initvars_flash) (si_t * sih, osl_t * osh, char **base, uint len) {
 	char devpath[SI_DEVPATH_BUFSZ];
 
 	/* allocate memory and read in flash */
-	if (!(flash = MALLOC(osh, NVRAM_SPACE)))
+	flash = kmalloc(NVRAM_SPACE, GFP_ATOMIC);
+	if (!flash)
 		return BCME_NOMEM;
-	if ((err = nvram_getall(flash, NVRAM_SPACE)))
+	err = nvram_getall(flash, NVRAM_SPACE);
+	if (err)
 		goto exit;
 
 	si_devpath(sih, devpath, sizeof(devpath));
@@ -1629,7 +1624,7 @@ BCMATTACHFN(initvars_flash) (si_t * sih, osl_t * osh, char **base, uint len) {
 
 	*base = vp;
 
- exit:	MFREE(osh, flash, NVRAM_SPACE);
+ exit:	kfree(flash);
 	return err;
 }
 
@@ -1637,8 +1632,8 @@ BCMATTACHFN(initvars_flash) (si_t * sih, osl_t * osh, char **base, uint len) {
  * Initialize nonvolatile variable table from flash.
  * Return 0 on success, nonzero on error.
  */
-static int
-BCMATTACHFN(initvars_flash_si) (si_t * sih, char **vars, uint * count) {
+static int initvars_flash_si(si_t *sih, char **vars, uint *count)
+{
 	osl_t *osh = si_osh(sih);
 	char *vp, *base;
 	int err;
@@ -1646,15 +1641,16 @@ BCMATTACHFN(initvars_flash_si) (si_t * sih, char **vars, uint * count) {
 	ASSERT(vars != NULL);
 	ASSERT(count != NULL);
 
-	base = vp = MALLOC(osh, MAXSZ_NVRAM_VARS);
+	base = vp = kmalloc(MAXSZ_NVRAM_VARS, GFP_ATOMIC);
 	ASSERT(vp != NULL);
 	if (!vp)
 		return BCME_NOMEM;
 
-	if ((err = initvars_flash(sih, osh, &vp, MAXSZ_NVRAM_VARS)) == 0)
+	err = initvars_flash(sih, osh, &vp, MAXSZ_NVRAM_VARS);
+	if (err == 0)
 		err = initvars_table(osh, base, vp, vars, count);
 
-	MFREE(osh, base, MAXSZ_NVRAM_VARS);
+	kfree(base);
 
 	return err;
 }
@@ -1665,7 +1661,7 @@ BCMATTACHFN(initvars_flash_si) (si_t * sih, char **vars, uint * count) {
  * SROM3_SWRG_OFF (full SROM or software region).
  */
 
-static uint mask_shift(uint16 mask)
+static uint mask_shift(u16 mask)
 {
 	uint i;
 	for (i = 0; i < (sizeof(mask) << 3); i++) {
@@ -1676,7 +1672,7 @@ static uint mask_shift(uint16 mask)
 	return 0;
 }
 
-static uint mask_width(uint16 mask)
+static uint mask_width(u16 mask)
 {
 	int i;
 	for (i = (sizeof(mask) << 3) - 1; i >= 0; i--) {
@@ -1688,7 +1684,7 @@ static uint mask_width(uint16 mask)
 }
 
 #if defined(BCMDBG)
-static bool mask_valid(uint16 mask)
+static bool mask_valid(u16 mask)
 {
 	uint shift = mask_shift(mask);
 	uint width = mask_width(mask);
@@ -1696,15 +1692,14 @@ static bool mask_valid(uint16 mask)
 }
 #endif				/* BCMDBG */
 
-static void
-BCMATTACHFN(_initvars_srom_pci) (uint8 sromrev, uint16 * srom, uint off,
-				 varbuf_t * b) {
-	uint16 w;
-	uint32 val;
+static void _initvars_srom_pci(u8 sromrev, u16 *srom, uint off, varbuf_t *b)
+{
+	u16 w;
+	u32 val;
 	const sromvar_t *srv;
 	uint width;
 	uint flags;
-	uint32 sr = (1 << sromrev);
+	u32 sr = (1 << sromrev);
 
 	varbuf_append(b, "sromrev=%d", sromrev);
 
@@ -1725,7 +1720,6 @@ BCMATTACHFN(_initvars_srom_pci) (uint8 sromrev, uint16 * srom, uint off,
 			continue;
 
 		if (flags & SRFL_ETHADDR) {
-			char eabuf[ETHER_ADDR_STR_LEN];
 			struct ether_addr ea;
 
 			ea.octet[0] = (srom[srv->off - off] >> 8) & 0xff;
@@ -1734,9 +1728,8 @@ BCMATTACHFN(_initvars_srom_pci) (uint8 sromrev, uint16 * srom, uint off,
 			ea.octet[3] = srom[srv->off + 1 - off] & 0xff;
 			ea.octet[4] = (srom[srv->off + 2 - off] >> 8) & 0xff;
 			ea.octet[5] = srom[srv->off + 2 - off] & 0xff;
-			bcm_ether_ntoa(&ea, eabuf);
 
-			varbuf_append(b, "%s=%s", name, eabuf);
+			varbuf_append(b, "%s=%pM", name, ea.octet);
 		} else {
 			ASSERT(mask_valid(srv->mask));
 			ASSERT(mask_width(srv->mask));
@@ -1778,7 +1771,7 @@ BCMATTACHFN(_initvars_srom_pci) (uint8 sromrev, uint16 * srom, uint off,
 			 *(oncount >> 24) (offcount >> 8)
 			 */
 			else if (flags & SRFL_LEDDC) {
-				uint32 w32 = (((val >> 8) & 0xff) << 24) |	/* oncount */
+				u32 w32 = (((val >> 8) & 0xff) << 24) |	/* oncount */
 				    (((val & 0xff)) << 8);	/* offcount */
 				varbuf_append(b, "leddc=%d", w32);
 			} else if (flags & SRFL_PRHEX)
@@ -1845,16 +1838,15 @@ BCMATTACHFN(_initvars_srom_pci) (uint8 sromrev, uint16 * srom, uint off,
  * Initialize nonvolatile variable table from sprom.
  * Return 0 on success, nonzero on error.
  */
-static int
-BCMATTACHFN(initvars_srom_pci) (si_t * sih, void *curmap, char **vars,
-				uint * count) {
-	uint16 *srom, *sromwindow;
-	uint8 sromrev = 0;
-	uint32 sr;
+static int initvars_srom_pci(si_t *sih, void *curmap, char **vars, uint *count)
+{
+	u16 *srom, *sromwindow;
+	u8 sromrev = 0;
+	u32 sr;
 	varbuf_t b;
 	char *vp, *base = NULL;
 	osl_t *osh = si_osh(sih);
-	bool flash = FALSE;
+	bool flash = false;
 	int err = 0;
 
 	/*
@@ -1863,16 +1855,16 @@ BCMATTACHFN(initvars_srom_pci) (si_t * sih, void *curmap, char **vars,
 	 * if we should return an error when CRC fails or read SROM variables
 	 * from flash.
 	 */
-	srom = MALLOC(osh, SROM_MAX);
+	srom = kmalloc(SROM_MAX, GFP_ATOMIC);
 	ASSERT(srom != NULL);
 	if (!srom)
 		return -2;
 
-	sromwindow = (uint16 *) SROM_OFFSET(sih);
+	sromwindow = (u16 *) SROM_OFFSET(sih);
 	if (si_is_sprom_available(sih)) {
 		err =
 		    sprom_read_pci(osh, sih, sromwindow, 0, srom, SROM_WORDS,
-				   TRUE);
+				   true);
 
 		if ((srom[SROM4_SIGN] == SROM4_SIGNATURE) ||
 		    (((sih->buscoretype == PCIE_CORE_ID)
@@ -1882,7 +1874,7 @@ BCMATTACHFN(initvars_srom_pci) (si_t * sih, void *curmap, char **vars,
 			/* sromrev >= 4, read more */
 			err =
 			    sprom_read_pci(osh, sih, sromwindow, 0, srom,
-					   SROM4_WORDS, TRUE);
+					   SROM4_WORDS, true);
 			sromrev = srom[SROM4_CRCREV] & 0xff;
 			if (err)
 				BS_ERROR(("%s: srom %d, bad crc\n", __func__,
@@ -1914,18 +1906,20 @@ BCMATTACHFN(initvars_srom_pci) (si_t * sih, void *curmap, char **vars,
 	 */
 	if (err) {
 		char *value;
-		uint32 val;
+		u32 val;
 		val = 0;
 
-		if ((value = si_getdevpathvar(sih, "sromrev"))) {
-			sromrev = (uint8) bcm_strtoul(value, NULL, 0);
-			flash = TRUE;
+		value = si_getdevpathvar(sih, "sromrev");
+		if (value) {
+			sromrev = (u8) simple_strtoul(value, NULL, 0);
+			flash = true;
 			goto varscont;
 		}
 
 		BS_ERROR(("%s, SROM CRC Error\n", __func__));
 
-		if ((value = si_getnvramflvar(sih, "sromrev"))) {
+		value = si_getnvramflvar(sih, "sromrev");
+		if (value) {
 			err = 0;
 			goto errout;
 		}
@@ -1949,7 +1943,7 @@ BCMATTACHFN(initvars_srom_pci) (si_t * sih, void *curmap, char **vars,
 	ASSERT(vars != NULL);
 	ASSERT(count != NULL);
 
-	base = vp = MALLOC(osh, MAXSZ_NVRAM_VARS);
+	base = vp = kmalloc(MAXSZ_NVRAM_VARS, GFP_ATOMIC);
 	ASSERT(vp != NULL);
 	if (!vp) {
 		err = -2;
@@ -1958,7 +1952,8 @@ BCMATTACHFN(initvars_srom_pci) (si_t * sih, void *curmap, char **vars,
 
 	/* read variables from flash */
 	if (flash) {
-		if ((err = initvars_flash(sih, osh, &vp, MAXSZ_NVRAM_VARS)))
+		err = initvars_flash(sih, osh, &vp, MAXSZ_NVRAM_VARS);
+		if (err)
 			goto errout;
 		goto varsdone;
 	}
@@ -1980,9 +1975,9 @@ BCMATTACHFN(initvars_srom_pci) (si_t * sih, void *curmap, char **vars,
 
  errout:
 	if (base)
-		MFREE(osh, base, MAXSZ_NVRAM_VARS);
+		kfree(base);
 
-	MFREE(osh, srom, SROM_MAX);
+	kfree(srom);
 	return err;
 }
 
@@ -1991,9 +1986,9 @@ BCMATTACHFN(initvars_srom_pci) (si_t * sih, void *curmap, char **vars,
  * Read the SDIO cis and call parsecis to initialize the vars.
  * Return 0 on success, nonzero on error.
  */
-static int
-BCMATTACHFN(initvars_cis_sdio) (osl_t * osh, char **vars, uint * count) {
-	uint8 *cis[SBSDIO_NUM_FUNCTION + 1];
+static int initvars_cis_sdio(osl_t *osh, char **vars, uint *count)
+{
+	u8 *cis[SBSDIO_NUM_FUNCTION + 1];
 	uint fn, numfn;
 	int rc = 0;
 
@@ -2001,16 +1996,15 @@ BCMATTACHFN(initvars_cis_sdio) (osl_t * osh, char **vars, uint * count) {
 	ASSERT(numfn <= SDIOD_MAX_IOFUNCS);
 
 	for (fn = 0; fn <= numfn; fn++) {
-		if ((cis[fn] = MALLOC(osh, SBSDIO_CIS_SIZE_LIMIT)) == NULL) {
+		cis[fn] = kzalloc(SBSDIO_CIS_SIZE_LIMIT, GFP_ATOMIC);
+		if (cis[fn] == NULL) {
 			rc = -1;
 			break;
 		}
 
-		bzero(cis[fn], SBSDIO_CIS_SIZE_LIMIT);
-
 		if (bcmsdh_cis_read(NULL, fn, cis[fn], SBSDIO_CIS_SIZE_LIMIT) !=
 		    0) {
-			MFREE(osh, cis[fn], SBSDIO_CIS_SIZE_LIMIT);
+			kfree(cis[fn]);
 			rc = -2;
 			break;
 		}
@@ -2020,14 +2014,15 @@ BCMATTACHFN(initvars_cis_sdio) (osl_t * osh, char **vars, uint * count) {
 		rc = srom_parsecis(osh, cis, fn, vars, count);
 
 	while (fn-- > 0)
-		MFREE(osh, cis[fn], SBSDIO_CIS_SIZE_LIMIT);
+		kfree(cis[fn]);
 
-	return (rc);
+	return rc;
 }
 
 /* set SDIO sprom command register */
-static int BCMATTACHFN(sprom_cmd_sdio) (osl_t * osh, uint8 cmd) {
-	uint8 status = 0;
+static int sprom_cmd_sdio(osl_t *osh, u8 cmd)
+{
+	u8 status = 0;
 	uint wait_cnt = 1000;
 
 	/* write sprom command register */
@@ -2045,12 +2040,12 @@ static int BCMATTACHFN(sprom_cmd_sdio) (osl_t * osh, uint8 cmd) {
 }
 
 /* read a word from the SDIO srom */
-static int sprom_read_sdio(osl_t * osh, uint16 addr, uint16 * data)
+static int sprom_read_sdio(osl_t *osh, u16 addr, u16 *data)
 {
-	uint8 addr_l, addr_h, data_l, data_h;
+	u8 addr_l, addr_h, data_l, data_h;
 
-	addr_l = (uint8) ((addr * 2) & 0xff);
-	addr_h = (uint8) (((addr * 2) >> 8) & 0xff);
+	addr_l = (u8) ((addr * 2) & 0xff);
+	addr_h = (u8) (((addr * 2) >> 8) & 0xff);
 
 	/* set address */
 	bcmsdh_cfg_write(NULL, SDIO_FUNC_1, SBSDIO_SPROM_ADDR_HIGH, addr_h,
@@ -2073,9 +2068,9 @@ static int sprom_read_sdio(osl_t * osh, uint16 addr, uint16 * data)
 }
 #endif				/* BCMSDIO */
 
-static int
-BCMATTACHFN(initvars_srom_si) (si_t * sih, osl_t * osh, void *curmap,
-			       char **vars, uint * varsz) {
+static int initvars_srom_si(si_t *sih, osl_t *osh, void *curmap, char **vars,
+			    uint *varsz)
+{
 	/* Search flash nvram section for srom variables */
 	return initvars_flash_si(sih, vars, varsz);
 }
