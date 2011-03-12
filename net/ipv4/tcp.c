@@ -386,8 +386,6 @@ unsigned int tcp_poll(struct file *file, struct socket *sock, poll_table *wait)
 	 */
 
 	mask = 0;
-	if (sk->sk_err)
-		mask = POLLERR;
 
 	/*
 	 * POLLHUP is certainly not done right. But poll() doesn't
@@ -457,6 +455,11 @@ unsigned int tcp_poll(struct file *file, struct socket *sock, poll_table *wait)
 		if (tp->urg_data & TCP_URG_VALID)
 			mask |= POLLPRI;
 	}
+	/* This barrier is coupled with smp_wmb() in tcp_reset() */
+	smp_rmb();
+	if (sk->sk_err)
+		mask |= POLLERR;
+
 	return mask;
 }
 
@@ -935,7 +938,7 @@ int tcp_sendmsg(struct kiocb *iocb, struct socket *sock, struct msghdr *msg,
 		goto out_err;
 
 	while (--iovlen >= 0) {
-		int seglen = iov->iov_len;
+		size_t seglen = iov->iov_len;
 		unsigned char __user *from = iov->iov_base;
 
 		iov++;

@@ -7755,10 +7755,9 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 	unsigned long flags;
 	struct rq *rq;
 
-	switch (action) {
+	switch (action & ~CPU_TASKS_FROZEN) {
 
 	case CPU_UP_PREPARE:
-	case CPU_UP_PREPARE_FROZEN:
 		p = kthread_create(migration_thread, hcpu, "migration/%d", cpu);
 		if (IS_ERR(p))
 			return NOTIFY_BAD;
@@ -7773,7 +7772,6 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 		break;
 
 	case CPU_ONLINE:
-	case CPU_ONLINE_FROZEN:
 		/* Strictly unnecessary, as first user will wake it. */
 		wake_up_process(cpu_rq(cpu)->migration_thread);
 
@@ -7790,7 +7788,6 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 
 #ifdef CONFIG_HOTPLUG_CPU
 	case CPU_UP_CANCELED:
-	case CPU_UP_CANCELED_FROZEN:
 		if (!cpu_rq(cpu)->migration_thread)
 			break;
 		/* Unbind it from offline cpu so it can run. Fall thru. */
@@ -7815,7 +7812,6 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 		break;
 
 	case CPU_DEAD:
-	case CPU_DEAD_FROZEN:
 		migrate_live_tasks(cpu);
 		rq = cpu_rq(cpu);
 		/* Idle task back to normal (off runqueue, low prio) */
@@ -7849,7 +7845,6 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 		break;
 
 	case CPU_DYING:
-	case CPU_DYING_FROZEN:
 		/* Update our root-domain */
 		rq = cpu_rq(cpu);
 		spin_lock_irqsave(&rq->lock, flags);
