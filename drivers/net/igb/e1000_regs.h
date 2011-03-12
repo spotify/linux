@@ -106,6 +106,15 @@
 
 #define E1000_RQDPC(_n) (0x0C030 + ((_n) * 0x40))
 
+/* DMA Coalescing registers */
+#define E1000_DMACR             0x02508 /* Control Register */
+#define E1000_DMCTXTH           0x03550 /* Transmit Threshold */
+#define E1000_DMCTLX            0x02514 /* Time to Lx Request */
+#define E1000_DMCRTRH           0x05DD0 /* Receive Packet Rate Threshold */
+#define E1000_DMCCNT            0x05DD4 /* Current Rx Count */
+#define E1000_FCRTC             0x02170 /* Flow Control Rx high watermark */
+#define E1000_PCIEMISC          0x05BB8 /* PCIE misc config register */
+
 /* Split and Replication RX Control - RW */
 #define E1000_RXPBS    0x02404  /* Rx Packet Buffer Size - RW */
 /*
