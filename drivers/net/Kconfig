@@ -2182,7 +2182,6 @@ config R8169
 	depends on PCI
 	select CRC32
 	select MII
-	select FW_LOADER
 	---help---
 	  Say Y here if you have a Realtek 8169 PCI Gigabit Ethernet adapter.
 
