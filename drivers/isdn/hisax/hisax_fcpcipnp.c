@@ -66,7 +66,6 @@ static struct pci_device_id fcpci_ids[] = {
 	{}
 };
 
-MODULE_DEVICE_TABLE(pci, fcpci_ids);
 
 #ifdef CONFIG_PNP
 static struct pnp_device_id fcpnp_ids[] __devinitdata = {

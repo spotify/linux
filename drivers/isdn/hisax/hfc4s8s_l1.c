@@ -121,7 +121,6 @@ static struct pci_device_id hfc4s8s_ids[] = {
 	{}
 };
 
-MODULE_DEVICE_TABLE(pci, hfc4s8s_ids);
 
 MODULE_AUTHOR("Werner Cornelius, werner@cornelius-consult.de");
 MODULE_DESCRIPTION("ISDN layer 1 for Cologne Chip HFC-4S/8S chips");
