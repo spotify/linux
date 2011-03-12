@@ -6095,13 +6095,13 @@ NTSTATUS RTUSBMultiRead(
 NTSTATUS RTUSBMultiWrite(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	USHORT			Offset,
-	IN	const u8		*pData,
+	IN	PUCHAR			pData,
 	IN	USHORT			length);
 
 NTSTATUS RTUSBMultiWrite_OneByte(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	USHORT			Offset,
-	IN	const u8		*pData);
+	IN	PUCHAR			pData);
 
 NTSTATUS RTUSBReadBBPRegister(
 	IN	PRTMP_ADAPTER	pAd,
@@ -6220,7 +6220,7 @@ NTSTATUS RTUSBFirmwareRun(
 
 NTSTATUS RTUSBFirmwareWrite(
 	IN PRTMP_ADAPTER pAd,
-	IN const u8		*pFwImage,
+	IN PUCHAR		pFwImage,
 	IN ULONG		FwLen);
 
 NTSTATUS	RTUSBFirmwareOpmode(

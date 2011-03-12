@@ -92,7 +92,7 @@ NTSTATUS	RTUSBFirmwareRun(
 */
 NTSTATUS RTUSBFirmwareWrite(
 	IN PRTMP_ADAPTER pAd,
-	IN const u8		*pFwImage,
+	IN PUCHAR		pFwImage,
 	IN ULONG		FwLen)
 {
 	UINT32		MacReg;
@@ -224,7 +224,7 @@ NTSTATUS	RTUSBMultiRead(
 NTSTATUS	RTUSBMultiWrite_OneByte(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	USHORT			Offset,
-	IN	const u8		*pData)
+	IN	PUCHAR			pData)
 {
 	NTSTATUS	Status;
 
@@ -236,7 +236,7 @@ NTSTATUS	RTUSBMultiWrite_OneByte(
 		0x6,
 		0,
 		Offset,
-		(u8 *)pData,
+		pData,
 		1);
 
 	return Status;
@@ -245,14 +245,14 @@ NTSTATUS	RTUSBMultiWrite_OneByte(
 NTSTATUS	RTUSBMultiWrite(
 	IN	PRTMP_ADAPTER	pAd,
 	IN	USHORT			Offset,
-	IN	const u8		*pData,
+	IN	PUCHAR			pData,
 	IN	USHORT			length)
 {
 	NTSTATUS	Status;
 
 
         USHORT          index = 0,Value;
-        const u8        *pSrc = pData;
+        PUCHAR          pSrc = pData;
         USHORT          resude = 0;
 
         resude = length % 2;
