@@ -50,12 +50,7 @@
 	/*
 	 * Reload arg registers from stack in case ptrace changed them.
 	 * We don't reload %eax because syscall_trace_enter() returned
-	 * the %rax value we should see.  Instead, we just truncate that
-	 * value to 32 bits again as we did on entry from user mode.
-	 * If it's a new value set by user_regset during entry tracing,
-	 * this matches the normal truncation of the user-mode value.
-	 * If it's -1 to make us punt the syscall, then (u32)-1 is still
-	 * an appropriately invalid value.
+	 * the value it wants us to use in the table lookup.
 	 */
 	.macro LOAD_ARGS32 offset, _r9=0
 	.if \_r9
@@ -65,7 +60,6 @@
 	movl \offset+48(%rsp),%edx
 	movl \offset+56(%rsp),%esi
 	movl \offset+64(%rsp),%edi
-	movl %eax,%eax			/* zero extension */
 	.endm
 	
 	.macro CFI_STARTPROC32 simple
