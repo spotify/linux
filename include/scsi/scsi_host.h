@@ -320,6 +320,8 @@ struct scsi_host_template {
 	int (* bios_param)(struct scsi_device *, struct block_device *,
 			sector_t, int []);
 
+	sector_t (*set_capacity)(struct scsi_device *, sector_t);
+
 	/*
 	 * Can be used to export driver statistics and other infos to the
 	 * world outside the kernel ie. userspace and it also provides an

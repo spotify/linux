@@ -96,6 +96,8 @@ MODULE_ALIAS_SCSI_DEVICE(TYPE_RBC);
 #endif
 
 static int  sd_revalidate_disk(struct gendisk *);
+static unsigned long long sd_set_capacity(struct gendisk *disk,
+					  unsigned long long new_capacity);
 static int  sd_probe(struct device *);
 static int  sd_remove(struct device *);
 static void sd_shutdown(struct device *);
@@ -1031,6 +1033,7 @@ static const struct block_device_operations sd_fops = {
 #endif
 	.media_changed		= sd_media_changed,
 	.revalidate_disk	= sd_revalidate_disk,
+	.set_capacity		= sd_set_capacity,
 };
 
 static unsigned int sd_completed_bytes(struct scsi_cmnd *scmd)
@@ -1984,6 +1987,17 @@ static int sd_revalidate_disk(struct gendisk *disk)
 
  out:
 	return 0;
+}
+
+static unsigned long long sd_set_capacity(struct gendisk *disk,
+					  unsigned long long new_capacity)
+{
+	struct scsi_device *sdev = scsi_disk(disk)->device;
+	sector_t capacity = 0;
+
+	if (sdev->host->hostt->set_capacity)
+		capacity = sdev->host->hostt->set_capacity(sdev, new_capacity);
+	return capacity ?: get_capacity(disk);
 }
 
 /**
