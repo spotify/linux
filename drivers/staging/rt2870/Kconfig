@@ -1,7 +1,6 @@
 config RT2870
 	tristate "Ralink 2870/3070 wireless support"
+	depends on BROKEN
 	depends on USB && X86 && WLAN
-	select CRC_CCITT
-	select FW_LOADER
 	---help---
 	  This is an experimental driver for the Ralink xx70 wireless chips.

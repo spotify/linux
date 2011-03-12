@@ -38,8 +38,14 @@
     Jan Lee  2006-09-15    RT2860. Change for 802.11n , EEPROM, Led, BA, HT.
 */
 #include "../rt_config.h"
-#include <linux/firmware.h>
-#include <linux/crc-ccitt.h>
+#ifdef RT2860
+#include "firmware.h"
+#include <linux/bitrev.h>
+#endif
+#ifdef RT2870
+/* New firmware handles both RT2870 and RT3070. */
+#include "../../rt3070/firmware.h"
+#endif
 
 UCHAR    BIT8[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 ULONG    BIT32[] = {0x00000001, 0x00000002, 0x00000004, 0x00000008,
@@ -168,25 +174,23 @@ RTMP_REG_PAIR	STAMACRegTable[] =	{
 #define	NUM_STA_MAC_REG_PARMS	(sizeof(STAMACRegTable) / sizeof(RTMP_REG_PAIR))
 
 #ifdef RT2870
+//
+// RT2870 Firmware Spec only used 1 oct for version expression
+//
+#define FIRMWARE_MINOR_VERSION	7
 
-#define FIRMWAREIMAGE_LENGTH		0x1000
+#endif // RT2870 //
 
-#define FIRMWARE_2870_MIN_VERSION       12
-#define FIRMWARE_2870_FILENAME          "rt2870.bin"	/* for RT2870/RT3070 */
-MODULE_FIRMWARE(FIRMWARE_2870_FILENAME);
+// New 8k byte firmware size for RT3071/RT3072
+#define FIRMWAREIMAGE_MAX_LENGTH	0x2000
+#define FIRMWAREIMAGE_LENGTH		(sizeof (FirmwareImage) / sizeof(UCHAR))
+#define FIRMWARE_MAJOR_VERSION	0
 
-#define FIRMWARE_3071_MIN_VERSION       2
-#define FIRMWARE_3071_FILENAME          "rt3071.bin"    /* for RT3071/RT3072 */
-MODULE_FIRMWARE(FIRMWARE_3071_FILENAME);
+#define FIRMWAREIMAGEV1_LENGTH	0x1000
+#define FIRMWAREIMAGEV2_LENGTH	0x1000
 
-#else /* RT2860 */
-
-#define FIRMWAREIMAGE_LENGTH		0x2000
-
-#define FIRMWARE_2860_MIN_VERSION       11
-#define FIRMWARE_2860_FILENAME          "rt2860.bin"
-MODULE_FIRMWARE(FIRMWARE_2860_FILENAME);
-
+#ifdef RT2860
+#define FIRMWARE_MINOR_VERSION	2
 #endif
 
 
@@ -2951,70 +2955,6 @@ VOID NICEraseFirmware(
 
 }/* End of NICEraseFirmware */
 
-static const struct firmware *rtmp_get_firmware(PRTMP_ADAPTER adapter)
-{
-	const char *name;
-	const struct firmware *fw = NULL;
-	u8 min_version;
-	struct device *dev;
-	int err;
-
-	if (adapter->firmware)
-		return adapter->firmware;
-
-#ifdef RT2870
-	if (IS_RT3071(adapter)) {
-		name = FIRMWARE_3071_FILENAME;
-		min_version = FIRMWARE_3071_MIN_VERSION;
-	} else {
-		name = FIRMWARE_2870_FILENAME;
-		min_version = FIRMWARE_2870_MIN_VERSION;
-	}
-	dev = &((POS_COOKIE)adapter->OS_Cookie)->pUsb_Dev->dev;
-#else /* RT2860 */
-	name = FIRMWARE_2860_FILENAME;
-	min_version = FIRMWARE_2860_MIN_VERSION;
-	dev = &((POS_COOKIE)adapter->OS_Cookie)->pci_dev->dev;
-#endif
-
-	err = request_firmware(&fw, name, dev);
-	if (err) {
-		dev_err(dev, "firmware file %s request failed (%d)\n",
-			name, err);
-		return NULL;
-	}
-
-	if (fw->size < FIRMWAREIMAGE_LENGTH) {
-		dev_err(dev, "firmware file %s size is invalid\n", name);
-		goto invalid;
-	}
-
-	/* is it new enough? */
-	adapter->FirmwareVersion = fw->data[FIRMWAREIMAGE_LENGTH - 3];
-	if (adapter->FirmwareVersion < min_version) {
-		dev_err(dev,
-			"firmware file %s is too old;"
-			" driver requires v%d or later\n",
-			name, min_version);
-		goto invalid;
-	}
-
-	/* is the internal CRC correct? */
-	if (crc_ccitt(0xffff, fw->data, FIRMWAREIMAGE_LENGTH - 2) !=
-	    (fw->data[FIRMWAREIMAGE_LENGTH - 2] |
-	     (fw->data[FIRMWAREIMAGE_LENGTH - 1] << 8))) {
-		dev_err(dev, "firmware file %s failed internal CRC\n", name);
-		goto invalid;
-	}
-
-	adapter->firmware = fw;
-	return fw;
-
-invalid:
-	release_firmware(fw);
-	return NULL;
-}
-
 /*
 	========================================================================
 
@@ -3035,16 +2975,46 @@ invalid:
 NDIS_STATUS NICLoadFirmware(
 	IN PRTMP_ADAPTER pAd)
 {
-	const struct firmware	*fw;
 	NDIS_STATUS		Status = NDIS_STATUS_SUCCESS;
-	ULONG			Index;
+	PUCHAR			pFirmwareImage;
+	ULONG			FileLength, Index;
+	//ULONG			firm;
 	UINT32			MacReg = 0;
+#ifdef RT2870
+	UINT32			Version = (pAd->MACVersion >> 16);
+#endif // RT2870 //
 
-	fw = rtmp_get_firmware(pAd);
-	if (!fw)
-		return NDIS_STATUS_FAILURE;
+	pFirmwareImage = FirmwareImage;
+	FileLength = sizeof(FirmwareImage);
+#ifdef RT2870
+	// New 8k byte firmware size for RT3071/RT3072
+	//printk("Usb Chip\n");
+	if (FIRMWAREIMAGE_LENGTH == FIRMWAREIMAGE_MAX_LENGTH)
+	//The firmware image consists of two parts. One is the origianl and the other is the new.
+	//Use Second Part
+	{
+		if ((Version != 0x2860) && (Version != 0x2872) && (Version != 0x3070))
+		{	// Use Firmware V2.
+			//printk("KH:Use New Version,part2\n");
+			pFirmwareImage = (PUCHAR)&FirmwareImage[FIRMWAREIMAGEV1_LENGTH];
+			FileLength = FIRMWAREIMAGEV2_LENGTH;
+		}
+		else
+		{
+			//printk("KH:Use New Version,part1\n");
+			pFirmwareImage = FirmwareImage;
+			FileLength = FIRMWAREIMAGEV1_LENGTH;
+		}
+	}
+	else
+	{
+		DBGPRINT(RT_DEBUG_ERROR, ("KH: bin file should be 8KB.\n"));
+		Status = NDIS_STATUS_FAILURE;
+	}
 
-	RT28XX_WRITE_FIRMWARE(pAd, fw->data, FIRMWAREIMAGE_LENGTH);
+#endif // RT2870 //
+
+	RT28XX_WRITE_FIRMWARE(pAd, pFirmwareImage, FileLength);
 
 	/* check if MCU is ready */
 	Index = 0;

@@ -2522,7 +2522,6 @@ typedef struct _RTMP_ADAPTER
 	PVOID					OS_Cookie;	// save specific structure relative to OS
 	PNET_DEV				net_dev;
 	ULONG					VirtualIfCnt;
-	const struct firmware			*firmware;
 
 #ifdef RT2860
     USHORT		            LnkCtrlBitMask;
