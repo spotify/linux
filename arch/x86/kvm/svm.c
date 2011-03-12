@@ -2567,10 +2567,10 @@ static void svm_set_nmi_mask(struct kvm_vcpu *vcpu, bool masked)
 
 	if (masked) {
 		svm->vcpu.arch.hflags |= HF_NMI_MASK;
-		svm->vmcb->control.intercept |= (1UL << INTERCEPT_IRET);
+		svm->vmcb->control.intercept |= (1ULL << INTERCEPT_IRET);
 	} else {
 		svm->vcpu.arch.hflags &= ~HF_NMI_MASK;
-		svm->vmcb->control.intercept &= ~(1UL << INTERCEPT_IRET);
+		svm->vmcb->control.intercept &= ~(1ULL << INTERCEPT_IRET);
 	}
 }
 
