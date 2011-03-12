@@ -179,25 +179,3 @@ const struct ssb_sprom *ssb_get_fallback_sprom(void)
 {
 	return fallback_sprom;
 }
-
-bool ssb_is_sprom_available(struct ssb_bus *bus)
-{
-	/* status register only exists on chipcomon rev >= 11 */
-	if (bus->chipco.dev->id.revision < 11)
-		return true;
-
-	switch (bus->chip_id) {
-	case 0x4312:
-		return SSB_CHIPCO_CHST_4312_SPROM_PRESENT(bus->chipco.status);
-	case 0x4322:
-		return SSB_CHIPCO_CHST_4322_SPROM_PRESENT(bus->chipco.status);
-	case 0x4325:
-		return SSB_CHIPCO_CHST_4325_SPROM_PRESENT(bus->chipco.status);
-	default:
-		break;
-	}
-	if (bus->chipco.dev->id.revision >= 31)
-		return bus->chipco.capabilities & SSB_CHIPCO_CAP_SPROM;
-
-	return true;
-}
