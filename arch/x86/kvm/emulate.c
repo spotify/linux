@@ -2119,21 +2119,13 @@ special_insn:
 		c->dst.type = OP_NONE;	/* Disable writeback. */
 		break;
 	case 0xfa: /* cli */
-		if (kvm_check_iopl(ctxt->vcpu))
-			kvm_inject_gp(ctxt->vcpu, 0);
-		else {
-			ctxt->eflags &= ~X86_EFLAGS_IF;
-			c->dst.type = OP_NONE;	/* Disable writeback. */
-		}
+		ctxt->eflags &= ~X86_EFLAGS_IF;
+		c->dst.type = OP_NONE;	/* Disable writeback. */
 		break;
 	case 0xfb: /* sti */
-		if (kvm_check_iopl(ctxt->vcpu))
-			kvm_inject_gp(ctxt->vcpu, 0);
-		else {
-			toggle_interruptibility(ctxt, X86_SHADOW_INT_STI);
-			ctxt->eflags |= X86_EFLAGS_IF;
-			c->dst.type = OP_NONE;	/* Disable writeback. */
-		}
+		toggle_interruptibility(ctxt, X86_SHADOW_INT_STI);
+		ctxt->eflags |= X86_EFLAGS_IF;
+		c->dst.type = OP_NONE;	/* Disable writeback. */
 		break;
 	case 0xfc: /* cld */
 		ctxt->eflags &= ~EFLG_DF;
