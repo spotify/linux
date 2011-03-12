@@ -1045,13 +1045,6 @@ extern int i915_wait_ring(struct drm_device * dev, int n, const char *caller);
 #define IS_I9XX(dev)		(INTEL_INFO(dev)->is_i9xx)
 #define IS_MOBILE(dev)		(INTEL_INFO(dev)->is_mobile)
 
-#define IS_GEN3(dev)	(IS_I915G(dev) ||			\
-			 IS_I915GM(dev) ||			\
-			 IS_I945G(dev) ||			\
-			 IS_I945GM(dev) ||			\
-			 IS_G33(dev) || \
-			 IS_PINEVIEW(dev))
-
 #define I915_NEED_GFX_HWS(dev)	(INTEL_INFO(dev)->need_gfx_hws)
 
 /* With the 945 and later, Y tiling got adjusted so that it was 32 128-byte
