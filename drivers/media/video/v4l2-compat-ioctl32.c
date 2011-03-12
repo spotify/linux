@@ -198,7 +198,6 @@ struct video_code32 {
 
 static int get_microcode32(struct video_code *kp, struct video_code32 __user *up)
 {
-	return -EFAULT;
 	if (!access_ok(VERIFY_READ, up, sizeof(struct video_code32)) ||
 		copy_from_user(kp->loadwhat, up->loadwhat, sizeof(up->loadwhat)) ||
 		get_user(kp->datasize, &up->datasize) ||
