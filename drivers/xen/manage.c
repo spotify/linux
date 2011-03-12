@@ -16,7 +16,6 @@
 
 #include <asm/xen/hypercall.h>
 #include <asm/xen/page.h>
-#include <asm/xen/hypervisor.h>
 
 enum shutdown_state {
 	SHUTDOWN_INVALID = -1,
@@ -33,30 +32,10 @@ enum shutdown_state {
 static enum shutdown_state shutting_down = SHUTDOWN_INVALID;
 
 #ifdef CONFIG_PM_SLEEP
-static int xen_hvm_suspend(void *data)
-{
-	struct sched_shutdown r = { .reason = SHUTDOWN_suspend };
-	int *cancelled = data;
-
-	BUG_ON(!irqs_disabled());
-
-	*cancelled = HYPERVISOR_sched_op(SCHEDOP_shutdown, &r);
-
-	xen_hvm_post_suspend(*cancelled);
-	gnttab_resume();
-
-	if (!*cancelled) {
-		xen_irq_resume();
-		xen_timer_resume();
-	}
-
-	return 0;
-}
-
 static int xen_suspend(void *data)
 {
-	int err;
 	int *cancelled = data;
+	int err;
 
 	BUG_ON(!irqs_disabled());
 
@@ -132,10 +111,7 @@ static void do_suspend(void)
 		goto out_resume;
 	}
 
-	if (xen_hvm_domain())
-		err = stop_machine(xen_hvm_suspend, &cancelled, cpumask_of(0));
-	else
-		err = stop_machine(xen_suspend, &cancelled, cpumask_of(0));
+	err = stop_machine(xen_suspend, &cancelled, cpumask_of(0));
 
 	dpm_resume_noirq(PMSG_RESUME);
 
@@ -284,19 +260,7 @@ static int shutdown_event(struct notifier_block *notifier,
 	return NOTIFY_DONE;
 }
 
-static int __init __setup_shutdown_event(void)
-{
-	/* Delay initialization in the PV on HVM case */
-	if (xen_hvm_domain())
-		return 0;
-
-	if (!xen_pv_domain())
-		return -ENODEV;
-
-	return xen_setup_shutdown_event();
-}
-
-int xen_setup_shutdown_event(void)
+static int __init setup_shutdown_event(void)
 {
 	static struct notifier_block xenstore_notifier = {
 		.notifier_call = shutdown_event
@@ -307,4 +271,4 @@ int xen_setup_shutdown_event(void)
 }
 EXPORT_SYMBOL_GPL(xen_setup_shutdown_event);
 
-subsys_initcall(__setup_shutdown_event);
+subsys_initcall(setup_shutdown_event);
