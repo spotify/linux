@@ -291,7 +291,7 @@ netdev_tx_t macvlan_start_xmit(struct sk_buff *skb,
 	} else
 		txq->tx_dropped++;
 
-	return ret;
+	return NETDEV_TX_OK;
 }
 EXPORT_SYMBOL_GPL(macvlan_start_xmit);
 
