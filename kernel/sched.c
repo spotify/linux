@@ -5216,44 +5216,89 @@ cputime_t task_stime(struct task_struct *p)
 {
 	return p->stime;
 }
+
+void thread_group_times(struct task_struct *p, cputime_t *ut, cputime_t *st)
+{
+	struct task_cputime cputime;
+
+	thread_group_cputime(p, &cputime);
+
+	*ut = cputime.utime;
+	*st = cputime.stime;
+}
 #else
+
+#ifndef nsecs_to_cputime
+# define nsecs_to_cputime(__nsecs) \
+	msecs_to_cputime(div_u64((__nsecs), NSEC_PER_MSEC))
+#endif
+
 cputime_t task_utime(struct task_struct *p)
 {
-	clock_t utime = cputime_to_clock_t(p->utime),
-		total = utime + cputime_to_clock_t(p->stime);
+	cputime_t utime = p->utime, total = utime + p->stime;
 	u64 temp;
 
 	/*
 	 * Use CFS's precise accounting:
 	 */
-	temp = (u64)nsec_to_clock_t(p->se.sum_exec_runtime);
+	temp = (u64)nsecs_to_cputime(p->se.sum_exec_runtime);
 
 	if (total) {
 		temp *= utime;
 		do_div(temp, total);
 	}
-	utime = (clock_t)temp;
+	utime = (cputime_t)temp;
 
-	p->prev_utime = max(p->prev_utime, clock_t_to_cputime(utime));
+	p->prev_utime = max(p->prev_utime, utime);
 	return p->prev_utime;
 }
 
 cputime_t task_stime(struct task_struct *p)
 {
-	clock_t stime;
+	cputime_t stime;
 
 	/*
 	 * Use CFS's precise accounting. (we subtract utime from
 	 * the total, to make sure the total observed by userspace
 	 * grows monotonically - apps rely on that):
 	 */
-	stime = nsec_to_clock_t(p->se.sum_exec_runtime) -
-			cputime_to_clock_t(task_utime(p));
+	stime = nsecs_to_cputime(p->se.sum_exec_runtime) - task_utime(p);
 
 	if (stime >= 0)
-		p->prev_stime = max(p->prev_stime, clock_t_to_cputime(stime));
+		p->prev_stime = max(p->prev_stime, stime);
 
 	return p->prev_stime;
+}
+
+/*
+ * Must be called with siglock held.
+ */
+void thread_group_times(struct task_struct *p, cputime_t *ut, cputime_t *st)
+{
+	struct signal_struct *sig = p->signal;
+	struct task_cputime cputime;
+	cputime_t rtime, utime, total;
+
+	thread_group_cputime(p, &cputime);
+
+	total = cputime_add(cputime.utime, cputime.stime);
+	rtime = nsecs_to_cputime(cputime.sum_exec_runtime);
+
+	if (total) {
+		u64 temp;
+
+		temp = (u64)(rtime * cputime.utime);
+		do_div(temp, total);
+		utime = (cputime_t)temp;
+	} else
+		utime = rtime;
+
+	sig->prev_utime = max(sig->prev_utime, utime);
+	sig->prev_stime = max(sig->prev_stime,
+			      cputime_sub(rtime, sig->prev_utime));
+
+	*ut = sig->prev_utime;
+	*st = sig->prev_stime;
 }
 #endif
 
@@ -5546,7 +5591,7 @@ int mutex_spin_on_owner(struct mutex *lock, struct thread_info *owner)
 	 * the mutex owner just released it and exited.
 	 */
 	if (probe_kernel_address(&owner->cpu, cpu))
-		goto out;
+		return 0;
 #else
 	cpu = owner->cpu;
 #endif
@@ -5556,14 +5601,14 @@ int mutex_spin_on_owner(struct mutex *lock, struct thread_info *owner)
 	 * the cpu field may no longer be valid.
 	 */
 	if (cpu >= nr_cpumask_bits)
-		goto out;
+		return 0;
 
 	/*
 	 * We need to validate that we can do a
 	 * get_cpu() and that we have the percpu area.
 	 */
 	if (!cpu_online(cpu))
-		goto out;
+		return 0;
 
 	rq = cpu_rq(cpu);
 
@@ -5582,7 +5627,7 @@ int mutex_spin_on_owner(struct mutex *lock, struct thread_info *owner)
 
 		cpu_relax();
 	}
-out:
+
 	return 1;
 }
 #endif
