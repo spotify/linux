@@ -669,7 +669,7 @@ static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 
 		count = __get_cpu_var(xed_nesting_count);
 		__get_cpu_var(xed_nesting_count) = 0;
-	} while (count != 1 || vcpu_info->evtchn_upcall_pending);
+	} while(count != 1);
 
 out:
 
@@ -693,7 +693,6 @@ void xen_hvm_evtchn_do_upcall(void)
 {
 	__xen_evtchn_do_upcall(get_irq_regs());
 }
-EXPORT_SYMBOL_GPL(xen_hvm_evtchn_do_upcall);
 
 /* Rebind a new event channel to an existing irq. */
 void rebind_evtchn_irq(int evtchn, int irq)
@@ -730,10 +729,7 @@ static int rebind_irq_to_cpu(unsigned irq, unsigned tcpu)
 	struct evtchn_bind_vcpu bind_vcpu;
 	int evtchn = evtchn_from_irq(irq);
 
-	/* events delivered via platform PCI interrupts are always
-	 * routed to vcpu 0 */
-	if (!VALID_EVTCHN(evtchn) ||
-		(xen_hvm_domain() && !xen_have_vector_callback))
+	if (!VALID_EVTCHN(evtchn))
 		return -1;
 
 	/* Send future instances of this interrupt to other vcpu. */
