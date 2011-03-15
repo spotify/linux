@@ -3849,6 +3849,7 @@ static int ext4_xattr_fiemap(struct inode *inode,
 int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 		__u64 start, __u64 len)
 {
+#if 0
 	ext4_lblk_t start_blk;
 	int error = 0;
 
@@ -3881,5 +3882,8 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 	}
 
 	return error;
+#else
+	return -EOPNOTSUPP;
+#endif
 }
 
