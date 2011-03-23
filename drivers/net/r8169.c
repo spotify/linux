@@ -1907,7 +1907,7 @@ static void rtl8168d_1_hw_phy_config(struct rtl8169_private *tp)
 
 	mdio_write(ioaddr, 0x1f, 0x0005);
 	mdio_write(ioaddr, 0x05, 0x001b);
-	if ((mdio_read(tp, 0x06) != 0xbf00) ||
+	if ((mdio_read(ioaddr, 0x06) != 0xbf00) ||
 	    (rtl_apply_firmware(tp, FIRMWARE_8168D_1) < 0)) {
 		if (netif_msg_probe(tp))
 			printk(KERN_WARNING "%s: unable to apply firmware patch\n",
@@ -2014,7 +2014,7 @@ static void rtl8168d_2_hw_phy_config(struct rtl8169_private *tp)
 
 	mdio_write(ioaddr, 0x1f, 0x0005);
 	mdio_write(ioaddr, 0x05, 0x001b);
-	if ((mdio_read(tp, 0x06) != 0xb300) ||
+	if ((mdio_read(ioaddr, 0x06) != 0xb300) ||
 	    (rtl_apply_firmware(tp, FIRMWARE_8168D_2) < 0)) {
 		if (netif_msg_probe(tp))
 			printk(KERN_WARNING "%s: unable to apply firmware patch\n",
