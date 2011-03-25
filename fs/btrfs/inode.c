@@ -4908,7 +4908,11 @@ static ssize_t btrfs_direct_IO(int rw, struct kiocb *iocb,
 static int btrfs_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 		__u64 start, __u64 len)
 {
+#if 0
 	return extent_fiemap(inode, fieinfo, start, len, btrfs_get_extent);
+#else
+	return -EOPNOTSUPP;
+#endif
 }
 
 int btrfs_readpage(struct file *file, struct page *page)
