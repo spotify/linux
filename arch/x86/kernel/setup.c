@@ -914,6 +914,7 @@ void __init setup_arch(char **cmdline_p)
 
 	high_memory = (void *)__va(max_pfn * PAGE_SIZE - 1) + 1;
 	max_pfn_mapped = KERNEL_IMAGE_SIZE >> PAGE_SHIFT;
+	mmu_cr4_features = read_cr4();
 #endif
 
 #ifdef CONFIG_X86_CHECK_BIOS_CORRUPTION
