@@ -193,8 +193,6 @@ struct intel_device_info {
 	u8 cursor_needs_physical : 1;
 };
 
-#define QUIRK_PIPEA_FORCE (1<<0)
-
 typedef struct drm_i915_private {
 	struct drm_device *dev;
 
@@ -307,8 +305,6 @@ typedef struct drm_i915_private {
 
 	/* Display functions */
 	struct drm_i915_display_funcs display;
-
-	unsigned long quirks;
 
 	/* Register state */
 	bool modeset_on_lid;
