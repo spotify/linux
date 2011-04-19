@@ -335,6 +335,7 @@ static struct device_attribute *megaraid_sdev_attrs[] = {
  * megaraid_change_queue_depth - Change the device's queue depth
  * @sdev:	scsi device struct
  * @qdepth:	depth to set
+ * @reason:	calling context
  *
  * Return value:
  * 	actual depth set
