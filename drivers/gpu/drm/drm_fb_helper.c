@@ -222,11 +222,27 @@ int drm_fb_helper_parse_command_line(struct drm_device *dev)
 	struct drm_connector *connector;
 
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
+		char *name;
+		char old_name[32];
 		char *option = NULL;
 
 		/* do something on return - turn off connector maybe */
-		if (fb_get_options(drm_get_connector_name(connector), &option))
-			continue;
+		name = drm_get_connector_name(connector);
+		if (fb_get_options(name, &option)) {
+			/* Temporary backward compatibility: 'DP-<n>'
+			 * used to be named 'DisplayPort-<n>'.
+			 */
+			if (connector->connector_type !=
+			    DRM_MODE_CONNECTOR_DisplayPort)
+				continue;
+			snprintf(old_name, sizeof(old_name), "DisplayPort-%d",
+				 connector->connector_type_id);
+			if (fb_get_options(old_name, &option))
+				continue;
+			DRM_ERROR("Connector '%s' is now named '%s' - kernel "
+				  "command line should be updated\n",
+				  old_name, name);
+		}
 
 		drm_fb_helper_connector_parse_command_line(connector, option);
 	}
