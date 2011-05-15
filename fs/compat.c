@@ -1543,6 +1543,7 @@ int compat_do_execve(char * filename,
 
 out:
 	if (bprm->mm) {
+		acct_arg_size(bprm, 0);
 		mmput(bprm->mm);
 	}
 
