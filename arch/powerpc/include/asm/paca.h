@@ -76,7 +76,10 @@ struct paca_struct {
 	s16 hw_cpu_id;			/* Physical processor number */
 	u8 cpu_start;			/* At startup, processor spins until */
 					/* this becomes non-zero. */
+#ifndef __GENKSYMS__
+/* There was previously a hole here, so this doesn't break ABI */
 	u8 kexec_state;         /* set when kexec down has irqs off */
+#endif
 #ifdef CONFIG_PPC_STD_MMU_64
 	struct slb_shadow *slb_shadow_ptr;
 
