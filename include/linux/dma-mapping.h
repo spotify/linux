@@ -240,4 +240,11 @@ struct dma_attrs;
 
 #endif /* CONFIG_HAVE_DMA_ATTRS */
 
+#define DEFINE_DMA_UNMAP_ADDR(ADDR_NAME) DECLARE_PCI_UNMAP_ADDR(ADDR_NAME);
+#define DEFINE_DMA_UNMAP_LEN(LEN_NAME)   DECLARE_PCI_UNMAP_LEN(LEN_NAME);
+#define dma_unmap_addr             pci_unmap_addr
+#define dma_unmap_addr_set         pci_unmap_addr_set
+#define dma_unmap_len              pci_unmap_len
+#define dma_unmap_len_set          pci_unmap_len_set
+
 #endif
