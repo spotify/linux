@@ -328,6 +328,27 @@ void drm_mm_put_block(struct drm_mm_node *cur)
 
 EXPORT_SYMBOL(drm_mm_put_block);
 
+static int check_free_mm_node(struct drm_mm_node *entry, unsigned long size,
+			      unsigned alignment)
+{
+	unsigned wasted = 0;
+
+	if (entry->size < size)
+		return 0;
+
+	if (alignment) {
+		register unsigned tmp = entry->start % alignment;
+		if (tmp)
+			wasted = alignment - tmp;
+	}
+
+	if (entry->size >= size + wasted) {
+		return 1;
+	}
+
+	return 0;
+}
+
 struct drm_mm_node *drm_mm_search_free(const struct drm_mm *mm,
 				       unsigned long size,
 				       unsigned alignment, int best_match)
@@ -337,31 +358,22 @@ struct drm_mm_node *drm_mm_search_free(const struct drm_mm *mm,
 	struct drm_mm_node *entry;
 	struct drm_mm_node *best;
 	unsigned long best_size;
-	unsigned wasted;
 
 	best = NULL;
 	best_size = ~0UL;
 
 	list_for_each(list, free_stack) {
 		entry = list_entry(list, struct drm_mm_node, fl_entry);
-		wasted = 0;
 
-		if (entry->size < size)
+		if (!check_free_mm_node(entry, size, alignment))
 			continue;
 
-		if (alignment) {
-			register unsigned tmp = entry->start % alignment;
-			if (tmp)
-				wasted += alignment - tmp;
-		}
+		if (!best_match)
+			return entry;
 
-		if (entry->size >= size + wasted) {
-			if (!best_match)
-				return entry;
-			if (entry->size < best_size) {
-				best = entry;
-				best_size = entry->size;
-			}
+		if (entry->size < best_size) {
+			best = entry;
+			best_size = entry->size;
 		}
 	}
 
@@ -381,38 +393,25 @@ struct drm_mm_node *drm_mm_search_free_in_range(const struct drm_mm *mm,
 	struct drm_mm_node *entry;
 	struct drm_mm_node *best;
 	unsigned long best_size;
-	unsigned wasted;
 
 	best = NULL;
 	best_size = ~0UL;
 
 	list_for_each(list, free_stack) {
 		entry = list_entry(list, struct drm_mm_node, fl_entry);
-		wasted = 0;
-
-		if (entry->size < size)
-			continue;
 
 		if (entry->start > end || (entry->start+entry->size) < start)
 			continue;
 
-		if (entry->start < start)
-			wasted += start - entry->start;
+		if (!check_free_mm_node(entry, size, alignment))
+			continue;
 
-		if (alignment) {
-			register unsigned tmp = (entry->start + wasted) % alignment;
-			if (tmp)
-				wasted += alignment - tmp;
-		}
+		if (!best_match)
+			return entry;
 
-		if (entry->size >= size + wasted &&
-		    (entry->start + wasted + size) <= end) {
-			if (!best_match)
-				return entry;
-			if (entry->size < best_size) {
-				best = entry;
-				best_size = entry->size;
-			}
+		if (entry->size < best_size) {
+			best = entry;
+			best_size = entry->size;
 		}
 	}
 
