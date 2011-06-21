@@ -2035,7 +2035,7 @@ bnad_netdev_hwstats_fill(struct bnad *bnad)
 		((u64)bnad->stats.bna_stats->rxf_bmap[1] << 32);
 	for (i = 0; bmap && (i < BFI_LL_RXF_ID_MAX); i++) {
 		if (bmap & 1) {
-			net_stats->rx_fifo_errors =
+			net_stats->rx_fifo_errors +=
 				bnad->stats.bna_stats->
 					hw_stats->rxf_stats[i].frame_drops;
 			break;
@@ -2643,6 +2643,7 @@ bnad_get_netdev_stats(struct net_device *netdev)
 {
 	struct bnad *bnad = netdev_priv(netdev);
 	unsigned long flags;
+	unsigned i;
 
 	spin_lock_irqsave(&bnad->bna_lock, flags);
 
@@ -2651,9 +2652,13 @@ bnad_get_netdev_stats(struct net_device *netdev)
 	bnad_netdev_qstats_fill(bnad);
 	bnad_netdev_hwstats_fill(bnad);
 
+	for (i = 0; i < sizeof(struct net_device_stats) / sizeof(unsigned long); i++)
+		((unsigned long *)&netdev->stats)[i] =
+			((unsigned long *)&bnad->net_stats)[i];
+
 	spin_unlock_irqrestore(&bnad->bna_lock, flags);
 
-	return &bnad->net_stats;
+	return &netdev->stats;
 }
 
 static void
