@@ -117,11 +117,9 @@
 #define NX_P3_B0		0x40
 #define NX_P3_B1		0x41
 #define NX_P3_B2		0x42
-#define NX_P3P_A0		0x50
 
 #define NX_IS_REVISION_P2(REVISION)     (REVISION <= NX_P2_C1)
 #define NX_IS_REVISION_P3(REVISION)     (REVISION >= NX_P3_A0)
-#define NX_IS_REVISION_P3P(REVISION)     (REVISION >= NX_P3P_A0)
 
 #define FIRST_PAGE_GROUP_START	0
 #define FIRST_PAGE_GROUP_END	0x100000
@@ -421,33 +419,6 @@ struct status_desc {
 	__le64 status_desc_data[2];
 } __attribute__ ((aligned(16)));
 
-/* UNIFIED ROMIMAGE *************************/
-#define NX_UNI_DIR_SECT_PRODUCT_TBL	0x0
-#define NX_UNI_DIR_SECT_BOOTLD		0x6
-#define NX_UNI_DIR_SECT_FW		0x7
-
-/*Offsets */
-#define NX_UNI_CHIP_REV_OFF		10
-#define NX_UNI_FLAGS_OFF		11
-#define NX_UNI_BIOS_VERSION_OFF 	12
-#define NX_UNI_BOOTLD_IDX_OFF		27
-#define NX_UNI_FIRMWARE_IDX_OFF 	29
-
-struct uni_table_desc{
-	uint32_t	findex;
-	uint32_t	num_entries;
-	uint32_t	entry_size;
-	uint32_t	reserved[5];
-};
-
-struct uni_data_desc{
-	uint32_t	findex;
-	uint32_t	size;
-	uint32_t	reserved[5];
-};
-
-/* UNIFIED ROMIMAGE *************************/
-
 /* The version of the main data structure */
 #define	NETXEN_BDINFO_VERSION 1
 
@@ -514,14 +485,11 @@ struct uni_data_desc{
 #define NX_P2_MN_ROMIMAGE	0
 #define NX_P3_CT_ROMIMAGE	1
 #define NX_P3_MN_ROMIMAGE	2
-#define NX_UNIFIED_ROMIMAGE	3
-#define NX_FLASH_ROMIMAGE	4
-#define NX_UNKNOWN_ROMIMAGE	0xff
+#define NX_FLASH_ROMIMAGE	3
 
 #define NX_P2_MN_ROMIMAGE_NAME		"nxromimg.bin"
 #define NX_P3_CT_ROMIMAGE_NAME		"nx3fwct.bin"
 #define NX_P3_MN_ROMIMAGE_NAME		"nx3fwmn.bin"
-#define NX_UNIFIED_ROMIMAGE_NAME	"phanfw.bin"
 #define NX_FLASH_ROMIMAGE_NAME		"flash"
 
 extern char netxen_nic_driver_name[];
@@ -1219,8 +1187,8 @@ struct netxen_adapter {
 	u32 (*crb_read)(struct netxen_adapter *, ulong);
 	int (*crb_write)(struct netxen_adapter *, ulong, u32);
 
-	int (*pci_mem_read)(struct netxen_adapter *, u64, u64 *);
-	int (*pci_mem_write)(struct netxen_adapter *, u64, u64);
+	int (*pci_mem_read)(struct netxen_adapter *, u64, void *, int);
+	int (*pci_mem_write)(struct netxen_adapter *, u64, void *, int);
 
 	unsigned long (*pci_set_window)(struct netxen_adapter *,
 			unsigned long long);
@@ -1247,7 +1215,7 @@ struct netxen_adapter {
 	nx_nic_intr_coalesce_t coal;
 
 	unsigned long state;
-	__le32 file_prd_off;	/*File fw product offset*/
+	u32 resv5;
 	u32 fw_version;
 	const struct firmware *fw;
 };
