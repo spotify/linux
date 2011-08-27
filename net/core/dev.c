@@ -2650,6 +2650,9 @@ gro_result_t napi_frags_finish(struct napi_struct *napi, struct sk_buff *skb,
 		break;
 
 	case GRO_DROP:
+		kfree_skb(skb);
+		break;
+
 	case GRO_MERGED_FREE:
 		napi_reuse_skb(napi, skb);
 		break;
