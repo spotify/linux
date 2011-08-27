@@ -1157,7 +1157,7 @@ void perf_event_task_sched_out(struct task_struct *task,
 	int do_switch = 1;
 
 	regs = task_pt_regs(task);
-	perf_sw_event(PERF_COUNT_SW_CONTEXT_SWITCHES, 1, 1, regs, 0);
+	perf_sw_event(PERF_COUNT_SW_CONTEXT_SWITCHES, 1, regs, 0);
 
 	if (likely(!ctx || !cpuctx->task_ctx))
 		return;
@@ -2647,12 +2647,9 @@ static void perf_output_wakeup(struct perf_output_handle *handle)
 {
 	atomic_set(&handle->data->poll, POLL_IN);
 
-	if (handle->nmi) {
-		handle->event->pending_wakeup = 1;
-		perf_pending_queue(&handle->event->pending,
-				   perf_pending_event);
-	} else
-		perf_event_wakeup(handle->event);
+	handle->event->pending_wakeup = 1;
+	perf_pending_queue(&handle->event->pending,
+			   perf_pending_event);
 }
 
 /*
@@ -2773,7 +2770,7 @@ void perf_output_copy(struct perf_output_handle *handle,
 
 int perf_output_begin(struct perf_output_handle *handle,
 		      struct perf_event *event, unsigned int size,
-		      int nmi, int sample)
+		      int sample)
 {
 	struct perf_event *output_event;
 	struct perf_mmap_data *data;
@@ -2802,7 +2799,6 @@ int perf_output_begin(struct perf_output_handle *handle,
 
 	handle->data	= data;
 	handle->event	= event;
-	handle->nmi	= nmi;
 	handle->sample	= sample;
 
 	if (!data->nr_pages)
@@ -3126,7 +3122,7 @@ void perf_prepare_sample(struct perf_event_header *header,
 	}
 }
 
-static void perf_event_output(struct perf_event *event, int nmi,
+static void perf_event_output(struct perf_event *event,
 				struct perf_sample_data *data,
 				struct pt_regs *regs)
 {
@@ -3135,7 +3131,7 @@ static void perf_event_output(struct perf_event *event, int nmi,
 
 	perf_prepare_sample(&header, data, event, regs);
 
-	if (perf_output_begin(&handle, event, header.size, nmi, 1))
+	if (perf_output_begin(&handle, event, header.size, 1))
 		return;
 
 	perf_output_sample(&handle, &header, data, event);
@@ -3170,7 +3166,7 @@ perf_event_read_event(struct perf_event *event,
 	};
 	int ret;
 
-	ret = perf_output_begin(&handle, event, read_event.header.size, 0, 0);
+	ret = perf_output_begin(&handle, event, read_event.header.size, 0);
 	if (ret)
 		return;
 
@@ -3210,7 +3206,7 @@ static void perf_event_task_output(struct perf_event *event,
 	int ret;
 
 	size  = task_event->event_id.header.size;
-	ret = perf_output_begin(&handle, event, size, 0, 0);
+	ret = perf_output_begin(&handle, event, size, 0);
 
 	if (ret)
 		return;
@@ -3332,7 +3328,7 @@ static void perf_event_comm_output(struct perf_event *event,
 {
 	struct perf_output_handle handle;
 	int size = comm_event->event_id.header.size;
-	int ret = perf_output_begin(&handle, event, size, 0, 0);
+	int ret = perf_output_begin(&handle, event, size, 0);
 
 	if (ret)
 		return;
@@ -3461,7 +3457,7 @@ static void perf_event_mmap_output(struct perf_event *event,
 {
 	struct perf_output_handle handle;
 	int size = mmap_event->event_id.header.size;
-	int ret = perf_output_begin(&handle, event, size, 0, 0);
+	int ret = perf_output_begin(&handle, event, size, 0);
 
 	if (ret)
 		return;
@@ -3632,7 +3628,7 @@ static void perf_log_throttle(struct perf_event *event, int enable)
 	if (enable)
 		throttle_event.header.type = PERF_RECORD_UNTHROTTLE;
 
-	ret = perf_output_begin(&handle, event, sizeof(throttle_event), 1, 0);
+	ret = perf_output_begin(&handle, event, sizeof(throttle_event), 0);
 	if (ret)
 		return;
 
@@ -3644,7 +3640,7 @@ static void perf_log_throttle(struct perf_event *event, int enable)
  * Generic event overflow handling, sampling.
  */
 
-static int __perf_event_overflow(struct perf_event *event, int nmi,
+static int __perf_event_overflow(struct perf_event *event,
 				   int throttle, struct perf_sample_data *data,
 				   struct pt_regs *regs)
 {
@@ -3694,23 +3690,20 @@ static int __perf_event_overflow(struct perf_event *event, int nmi,
 	if (events && atomic_dec_and_test(&event->event_limit)) {
 		ret = 1;
 		event->pending_kill = POLL_HUP;
-		if (nmi) {
-			event->pending_disable = 1;
-			perf_pending_queue(&event->pending,
-					   perf_pending_event);
-		} else
-			perf_event_disable(event);
+		event->pending_disable = 1;
+		perf_pending_queue(&event->pending,
+				   perf_pending_event);
 	}
 
-	perf_event_output(event, nmi, data, regs);
+	perf_event_output(event, data, regs);
 	return ret;
 }
 
-int perf_event_overflow(struct perf_event *event, int nmi,
+int perf_event_overflow(struct perf_event *event,
 			  struct perf_sample_data *data,
 			  struct pt_regs *regs)
 {
-	return __perf_event_overflow(event, nmi, 1, data, regs);
+	return __perf_event_overflow(event, 1, data, regs);
 }
 
 /*
@@ -3748,7 +3741,7 @@ again:
 }
 
 static void perf_swevent_overflow(struct perf_event *event,
-				    int nmi, struct perf_sample_data *data,
+				    struct perf_sample_data *data,
 				    struct pt_regs *regs)
 {
 	struct hw_perf_event *hwc = &event->hw;
@@ -3762,7 +3755,7 @@ static void perf_swevent_overflow(struct perf_event *event,
 		return;
 
 	for (; overflow; overflow--) {
-		if (__perf_event_overflow(event, nmi, throttle,
+		if (__perf_event_overflow(event, throttle,
 					    data, regs)) {
 			/*
 			 * We inhibit the overflow from happening when
@@ -3782,7 +3775,7 @@ static void perf_swevent_unthrottle(struct perf_event *event)
 }
 
 static void perf_swevent_add(struct perf_event *event, u64 nr,
-			       int nmi, struct perf_sample_data *data,
+			       struct perf_sample_data *data,
 			       struct pt_regs *regs)
 {
 	struct hw_perf_event *hwc = &event->hw;
@@ -3796,7 +3789,7 @@ static void perf_swevent_add(struct perf_event *event, u64 nr,
 		return;
 
 	if (!atomic64_add_negative(nr, &hwc->period_left))
-		perf_swevent_overflow(event, nmi, data, regs);
+		perf_swevent_overflow(event, data, regs);
 }
 
 static int perf_swevent_is_counting(struct perf_event *event)
@@ -3857,7 +3850,7 @@ static int perf_swevent_match(struct perf_event *event,
 
 static void perf_swevent_ctx_event(struct perf_event_context *ctx,
 				     enum perf_type_id type,
-				     u32 event_id, u64 nr, int nmi,
+				     u32 event_id, u64 nr,
 				     struct perf_sample_data *data,
 				     struct pt_regs *regs)
 {
@@ -3869,7 +3862,7 @@ static void perf_swevent_ctx_event(struct perf_event_context *ctx,
 	rcu_read_lock();
 	list_for_each_entry_rcu(event, &ctx->event_list, event_entry) {
 		if (perf_swevent_match(event, type, event_id, regs))
-			perf_swevent_add(event, nr, nmi, data, regs);
+			perf_swevent_add(event, nr, data, regs);
 	}
 	rcu_read_unlock();
 }
@@ -3889,7 +3882,7 @@ static int *perf_swevent_recursion_context(struct perf_cpu_context *cpuctx)
 }
 
 static void do_perf_sw_event(enum perf_type_id type, u32 event_id,
-				    u64 nr, int nmi,
+				    u64 nr,
 				    struct perf_sample_data *data,
 				    struct pt_regs *regs)
 {
@@ -3904,7 +3897,7 @@ static void do_perf_sw_event(enum perf_type_id type, u32 event_id,
 	barrier();
 
 	perf_swevent_ctx_event(&cpuctx->ctx, type, event_id,
-				 nr, nmi, data, regs);
+				 nr, data, regs);
 	rcu_read_lock();
 	/*
 	 * doesn't really matter which of the child contexts the
@@ -3912,7 +3905,7 @@ static void do_perf_sw_event(enum perf_type_id type, u32 event_id,
 	 */
 	ctx = rcu_dereference(current->perf_event_ctxp);
 	if (ctx)
-		perf_swevent_ctx_event(ctx, type, event_id, nr, nmi, data, regs);
+		perf_swevent_ctx_event(ctx, type, event_id, nr, data, regs);
 	rcu_read_unlock();
 
 	barrier();
@@ -3922,14 +3915,14 @@ out:
 	put_cpu_var(perf_cpu_context);
 }
 
-void __perf_sw_event(u32 event_id, u64 nr, int nmi,
+void __perf_sw_event(u32 event_id, u64 nr,
 			    struct pt_regs *regs, u64 addr)
 {
 	struct perf_sample_data data = {
 		.addr = addr,
 	};
 
-	do_perf_sw_event(PERF_TYPE_SOFTWARE, event_id, nr, nmi,
+	do_perf_sw_event(PERF_TYPE_SOFTWARE, event_id, nr,
 				&data, regs);
 }
 
@@ -3987,7 +3980,7 @@ static enum hrtimer_restart perf_swevent_hrtimer(struct hrtimer *hrtimer)
 
 	if (regs) {
 		if (!(event->attr.exclude_idle && current->pid == 0))
-			if (perf_event_overflow(event, 0, &data, regs))
+			if (perf_event_overflow(event, &data, regs))
 				ret = HRTIMER_NORESTART;
 	}
 
@@ -4153,7 +4146,7 @@ void perf_tp_event(int event_id, u64 addr, u64 count, void *record,
 	if (!regs)
 		regs = task_pt_regs(current);
 
-	do_perf_sw_event(PERF_TYPE_TRACEPOINT, event_id, count, 1,
+	do_perf_sw_event(PERF_TYPE_TRACEPOINT, event_id, count,
 				&data, regs);
 }
 EXPORT_SYMBOL_GPL(perf_tp_event);

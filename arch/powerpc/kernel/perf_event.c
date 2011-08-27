@@ -1132,7 +1132,7 @@ const struct pmu *hw_perf_event_init(struct perf_event *event)
  * here so there is no possibility of being interrupted.
  */
 static void record_and_restart(struct perf_event *event, unsigned long val,
-			       struct pt_regs *regs, int nmi)
+			       struct pt_regs *regs)
 {
 	u64 period = event->hw.sample_period;
 	s64 prev, delta, left;
@@ -1172,7 +1172,7 @@ static void record_and_restart(struct perf_event *event, unsigned long val,
 		if (event->attr.sample_type & PERF_SAMPLE_ADDR)
 			perf_get_data_addr(regs, &data.addr);
 
-		if (perf_event_overflow(event, nmi, &data, regs)) {
+		if (perf_event_overflow(event, &data, regs)) {
 			/*
 			 * Interrupts are coming too fast - throttle them
 			 * by setting the event to 0, so it will be
@@ -1274,7 +1274,7 @@ static void perf_event_interrupt(struct pt_regs *regs)
 		if ((int)val < 0) {
 			/* event has overflowed */
 			found = 1;
-			record_and_restart(event, val, regs, nmi);
+			record_and_restart(event, val, regs);
 		}
 	}
 

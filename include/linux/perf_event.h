@@ -703,7 +703,6 @@ struct perf_output_handle {
 	struct perf_mmap_data		*data;
 	unsigned long			head;
 	unsigned long			offset;
-	int				nmi;
 	int				sample;
 	int				locked;
 	unsigned long			flags;
@@ -769,7 +768,7 @@ extern void perf_prepare_sample(struct perf_event_header *header,
 				struct perf_event *event,
 				struct pt_regs *regs);
 
-extern int perf_event_overflow(struct perf_event *event, int nmi,
+extern int perf_event_overflow(struct perf_event *event,
 				 struct perf_sample_data *data,
 				 struct pt_regs *regs);
 
@@ -785,13 +784,13 @@ static inline int is_software_event(struct perf_event *event)
 
 extern atomic_t perf_swevent_enabled[PERF_COUNT_SW_MAX];
 
-extern void __perf_sw_event(u32, u64, int, struct pt_regs *, u64);
+extern void __perf_sw_event(u32, u64, struct pt_regs *, u64);
 
 static inline void
-perf_sw_event(u32 event_id, u64 nr, int nmi, struct pt_regs *regs, u64 addr)
+perf_sw_event(u32 event_id, u64 nr, struct pt_regs *regs, u64 addr)
 {
 	if (atomic_read(&perf_swevent_enabled[event_id]))
-		__perf_sw_event(event_id, nr, nmi, regs, addr);
+		__perf_sw_event(event_id, nr, regs, addr);
 }
 
 extern void __perf_event_mmap(struct vm_area_struct *vma);
@@ -823,7 +822,7 @@ extern void perf_tp_event(int event_id, u64 addr, u64 count,
 
 extern int perf_output_begin(struct perf_output_handle *handle,
 			     struct perf_event *event, unsigned int size,
-			     int nmi, int sample);
+			     int sample);
 extern void perf_output_end(struct perf_output_handle *handle);
 extern void perf_output_copy(struct perf_output_handle *handle,
 			     const void *buf, unsigned int len);
@@ -846,7 +845,7 @@ static inline int perf_event_task_disable(void)				{ return -EINVAL; }
 static inline int perf_event_task_enable(void)				{ return -EINVAL; }
 
 static inline void
-perf_sw_event(u32 event_id, u64 nr, int nmi,
+perf_sw_event(u32 event_id, u64 nr,
 		     struct pt_regs *regs, u64 addr)			{ }
 
 static inline void perf_event_mmap(struct vm_area_struct *vma)		{ }

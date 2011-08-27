@@ -2148,7 +2148,7 @@ void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
 	if (old_cpu != new_cpu) {
 		p->se.nr_migrations++;
 		perf_sw_event(PERF_COUNT_SW_CPU_MIGRATIONS,
-				     1, 1, NULL, 0);
+				     1, NULL, 0);
 	}
 
 	__set_task_cpu(p, new_cpu);

@@ -1624,7 +1624,7 @@ static void intel_pmu_drain_bts_buffer(struct cpu_hw_events *cpuc)
 	perf_prepare_sample(&header, &data, event, &regs);
 
 	if (perf_output_begin(&handle, event,
-			      header.size * (top - at), 1, 1))
+			      header.size * (top - at), 1))
 		return;
 
 	for (; at < top; at++) {
@@ -1754,7 +1754,7 @@ static int p6_pmu_handle_irq(struct pt_regs *regs)
 		if (!x86_perf_event_set_period(event, hwc, idx))
 			continue;
 
-		if (perf_event_overflow(event, 1, &data, regs))
+		if (perf_event_overflow(event, &data, regs))
 			p6_pmu_disable_event(hwc, idx);
 	}
 
@@ -1811,7 +1811,7 @@ again:
 
 		data.period = event->hw.last_period;
 
-		if (perf_event_overflow(event, 1, &data, regs))
+		if (perf_event_overflow(event, &data, regs))
 			intel_pmu_disable_event(&event->hw, bit);
 	}
 
@@ -1862,7 +1862,7 @@ static int amd_pmu_handle_irq(struct pt_regs *regs)
 		if (!x86_perf_event_set_period(event, hwc, idx))
 			continue;
 
-		if (perf_event_overflow(event, 1, &data, regs))
+		if (perf_event_overflow(event, &data, regs))
 			amd_pmu_disable_event(hwc, idx);
 	}
 
