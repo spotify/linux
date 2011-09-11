@@ -1465,29 +1465,27 @@ static int __init ip6_tunnel_init(void)
 {
 	int  err;
 
-	err = register_pernet_device(&ip6_tnl_net_ops);
-	if (err < 0)
-		goto out_pernet;
-
-	err = xfrm6_tunnel_register(&ip4ip6_handler, AF_INET);
-	if (err < 0) {
+	if (xfrm6_tunnel_register(&ip4ip6_handler, AF_INET)) {
 		printk(KERN_ERR "ip6_tunnel init: can't register ip4ip6\n");
-		goto out_ip4ip6;
+		err = -EAGAIN;
+		goto out;
 	}
 
-	err = xfrm6_tunnel_register(&ip6ip6_handler, AF_INET6);
-	if (err < 0) {
+	if (xfrm6_tunnel_register(&ip6ip6_handler, AF_INET6)) {
 		printk(KERN_ERR "ip6_tunnel init: can't register ip6ip6\n");
-		goto out_ip6ip6;
+		err = -EAGAIN;
+		goto unreg_ip4ip6;
 	}
 
+	err = register_pernet_gen_device(&ip6_tnl_net_id, &ip6_tnl_net_ops);
+	if (err < 0)
+		goto err_pernet;
 	return 0;
-
-out_ip6ip6:
+err_pernet:
+	xfrm6_tunnel_deregister(&ip6ip6_handler, AF_INET6);
+unreg_ip4ip6:
 	xfrm6_tunnel_deregister(&ip4ip6_handler, AF_INET);
-out_ip4ip6:
-	unregister_pernet_device(&ip6_tnl_net_ops);
-out_pernet:
+out:
 	return err;
 }
 

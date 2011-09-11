@@ -830,14 +830,15 @@ static int __init ipip_init(void)
 
 	printk(banner);
 
-	err = register_pernet_gen_device(&ipip_net_id, &ipip_net_ops);
-	if (err < 0)
-		return err;
-	err = xfrm4_tunnel_register(&ipip_handler, AF_INET);
-	if (err < 0) {
-		unregister_pernet_device(&ipip_net_ops);
+	if (xfrm4_tunnel_register(&ipip_handler, AF_INET)) {
 		printk(KERN_INFO "ipip init: can't register tunnel\n");
+		return -EAGAIN;
 	}
+
+	err = register_pernet_gen_device(&ipip_net_id, &ipip_net_ops);
+	if (err)
+		xfrm4_tunnel_deregister(&ipip_handler, AF_INET);
+
 	return err;
 }
 
