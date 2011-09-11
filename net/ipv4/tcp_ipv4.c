@@ -71,7 +71,6 @@
 #include <net/timewait_sock.h>
 #include <net/xfrm.h>
 #include <net/netdma.h>
-#include <net/secure_seq.h>
 
 #include <linux/inet.h>
 #include <linux/ipv6.h>
