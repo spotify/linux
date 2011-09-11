@@ -2454,7 +2454,8 @@ void unmap_mapping_range(struct address_space *mapping,
 		details.last_index = ULONG_MAX;
 	details.i_mmap_lock = &mapping->i_mmap_lock;
 
-	mutex_lock(&mapping->unmap_mutex);
+	while (test_and_set_bit(AS_UNMAP_MUTEX, &mapping->flags))
+		schedule_timeout_uninterruptible(1);
 	spin_lock(&mapping->i_mmap_lock);
 
 	/* Protect against endless unmapping loops */
@@ -2471,7 +2472,8 @@ void unmap_mapping_range(struct address_space *mapping,
 	if (unlikely(!list_empty(&mapping->i_mmap_nonlinear)))
 		unmap_mapping_range_list(&mapping->i_mmap_nonlinear, &details);
 	spin_unlock(&mapping->i_mmap_lock);
-	mutex_unlock(&mapping->unmap_mutex);
+	smp_mb__before_clear_bit();
+	clear_bit(AS_UNMAP_MUTEX, &mapping->flags);
 }
 EXPORT_SYMBOL(unmap_mapping_range);
 
