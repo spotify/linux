@@ -1665,15 +1665,14 @@ static int __init ipgre_init(void)
 
 	printk(KERN_INFO "GRE over IPv4 tunneling driver\n");
 
+	if (inet_add_protocol(&ipgre_protocol, IPPROTO_GRE) < 0) {
+		printk(KERN_INFO "ipgre init: can't add protocol\n");
+		return -EAGAIN;
+	}
+
 	err = register_pernet_gen_device(&ipgre_net_id, &ipgre_net_ops);
 	if (err < 0)
-		return err;
-
-	err = inet_add_protocol(&ipgre_protocol, IPPROTO_GRE);
-	if (err < 0) {
-		printk(KERN_INFO "ipgre init: can't add protocol\n");
-		goto add_proto_failed;
-	}
+		goto gen_device_failed;
 
 	err = rtnl_link_register(&ipgre_link_ops);
 	if (err < 0)
@@ -1689,9 +1688,9 @@ out:
 tap_ops_failed:
 	rtnl_link_unregister(&ipgre_link_ops);
 rtnl_link_failed:
-	inet_del_protocol(&ipgre_protocol, IPPROTO_GRE);
-add_proto_failed:
 	unregister_pernet_gen_device(ipgre_net_id, &ipgre_net_ops);
+gen_device_failed:
+	inet_del_protocol(&ipgre_protocol, IPPROTO_GRE);
 	goto out;
 }
 
@@ -1699,9 +1698,9 @@ static void __exit ipgre_fini(void)
 {
 	rtnl_link_unregister(&ipgre_tap_ops);
 	rtnl_link_unregister(&ipgre_link_ops);
+	unregister_pernet_gen_device(ipgre_net_id, &ipgre_net_ops);
 	if (inet_del_protocol(&ipgre_protocol, IPPROTO_GRE) < 0)
 		printk(KERN_INFO "ipgre close: can't remove protocol\n");
-	unregister_pernet_gen_device(ipgre_net_id, &ipgre_net_ops);
 }
 
 module_init(ipgre_init);
