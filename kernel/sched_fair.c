@@ -1354,7 +1354,8 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 		}
 
 		/* Adjust by relative CPU power of the group */
-		avg_load = (avg_load * SCHED_LOAD_SCALE) / group->cpu_power;
+		avg_load = (avg_load * SCHED_LOAD_SCALE) /
+			sched_group_power(group);
 
 		if (local_group) {
 			this_load = avg_load;

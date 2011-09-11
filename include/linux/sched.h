@@ -919,6 +919,15 @@ static inline struct cpumask *sched_group_cpus(struct sched_group *sg)
 	return to_cpumask(sg->cpumask);
 }
 
+extern unsigned int sched_warn_zero_power(struct sched_group *group);
+
+static inline unsigned int sched_group_power(struct sched_group *group)
+{
+	unsigned int power = ACCESS_ONCE(group->cpu_power);
+
+	return likely(power > 0) ? power : sched_warn_zero_power(group);
+}
+
 enum sched_domain_level {
 	SD_LV_NONE = 0,
 	SD_LV_SIBLING,

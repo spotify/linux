@@ -3804,6 +3804,7 @@ static void update_cpu_power(struct sched_domain *sd, int cpu)
 	unsigned long weight = cpumask_weight(sched_domain_span(sd));
 	unsigned long power = SCHED_LOAD_SCALE;
 	struct sched_group *sdg = sd->groups;
+	unsigned long scale_rt;
 
 	if (sched_feat(ARCH_POWER))
 		power *= arch_scale_freq_power(sd, cpu);
@@ -3821,11 +3822,15 @@ static void update_cpu_power(struct sched_domain *sd, int cpu)
 		power >>= SCHED_LOAD_SHIFT;
 	}
 
-	power *= scale_rt_power(cpu);
+	scale_rt = scale_rt_power(cpu);
+	power *= scale_rt;
 	power >>= SCHED_LOAD_SHIFT;
 
 	if (!power)
 		power = 1;
+
+	WARN_ONCE((long)power <= 0, "group %p cpu_power = %ld; scale_rt = %ld",
+		  sdg, power, scale_rt);
 
 	cpu_rq(cpu)->cpu_power = power;
 	sdg->cpu_power = power;
@@ -3849,6 +3854,8 @@ static void update_group_power(struct sched_domain *sd, int cpu)
 		power += group->cpu_power;
 		group = group->next;
 	} while (group != child->groups);
+
+	WARN_ONCE((long)power <= 0, "group %p cpu_power = %ld", sdg, power);
 
 	sdg->cpu_power = power;
 }
@@ -3932,7 +3939,8 @@ static inline void update_sg_lb_stats(struct sched_domain *sd,
 	}
 
 	/* Adjust by relative CPU power of the group */
-	sgs->avg_load = (sgs->group_load * SCHED_LOAD_SCALE) / group->cpu_power;
+	sgs->avg_load = (sgs->group_load * SCHED_LOAD_SCALE) /
+		sched_group_power(group);
 
 	/*
 	 * Consider the group unbalanced when the imbalance is larger
@@ -8104,7 +8112,7 @@ static int sched_domain_debug_one(struct sched_domain *sd, int cpu, int level,
 
 		cpulist_scnprintf(str, sizeof(str), sched_group_cpus(group));
 
-		printk(KERN_CONT " %s", str);
+		printk(KERN_CONT " group %p cpus %s", group, str);
 		if (group->cpu_power != SCHED_LOAD_SCALE) {
 			printk(KERN_CONT " (cpu_power = %d)",
 				group->cpu_power);
@@ -11190,3 +11198,14 @@ void synchronize_sched_expedited(void)
 EXPORT_SYMBOL_GPL(synchronize_sched_expedited);
 
 #endif /* #else #ifndef CONFIG_SMP */
+
+/* Fix up and warn about group with cpu_power = 0 */
+unsigned int sched_warn_zero_power(struct sched_group *group)
+{
+	static char str[256];
+
+	cpulist_scnprintf(str, sizeof(str), sched_group_cpus(group));
+	WARN_ONCE(1, "group %p cpus %s cpu_power = 0", group, str);
+
+	return SCHED_LOAD_SCALE;
+}
