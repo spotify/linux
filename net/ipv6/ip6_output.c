@@ -628,9 +628,9 @@ static u32 __ipv6_select_ident(const struct in6_addr *addr)
 	return hash + newid;
 }
 
-void ipv6_select_ident(struct frag_hdr *fhdr, struct rt6_info *rt)
+void ipv6_select_ident(struct frag_hdr *fhdr, struct in6_addr *addr)
 {
-	fhdr->identification = htonl(__ipv6_select_ident(&rt->rt6i_dst.addr));
+	fhdr->identification = htonl(__ipv6_select_ident(addr));
 }
 
 static int ip6_fragment(struct sk_buff *skb, int (*output)(struct sk_buff *))
@@ -718,7 +718,7 @@ static int ip6_fragment(struct sk_buff *skb, int (*output)(struct sk_buff *))
 		skb_reset_network_header(skb);
 		memcpy(skb_network_header(skb), tmp_hdr, hlen);
 
-		ipv6_select_ident(fh, rt);
+		ipv6_select_ident(fh, &rt->rt6i_dst.addr);
 		fh->nexthdr = nexthdr;
 		fh->reserved = 0;
 		fh->frag_off = htons(IP6_MF);
@@ -864,7 +864,7 @@ slow_path:
 		fh->nexthdr = nexthdr;
 		fh->reserved = 0;
 		if (!frag_id) {
-			ipv6_select_ident(fh, rt);
+			ipv6_select_ident(fh, &rt->rt6i_dst.addr);
 			frag_id = fh->identification;
 		} else
 			fh->identification = frag_id;
@@ -1114,7 +1114,7 @@ static inline int ip6_ufo_append_data(struct sock *sk,
 		skb_shinfo(skb)->gso_size = (mtu - fragheaderlen -
 					     sizeof(struct frag_hdr)) & ~7;
 		skb_shinfo(skb)->gso_type = SKB_GSO_UDP;
-		ipv6_select_ident(&fhdr, rt);
+		ipv6_select_ident(&fhdr, &rt->rt6i_dst.addr);
 		skb_shinfo(skb)->ip6_frag_id = fhdr.identification;
 		__skb_queue_tail(&sk->sk_write_queue, skb);
 
