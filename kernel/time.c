@@ -593,8 +593,9 @@ EXPORT_SYMBOL(jiffies_to_timeval);
 /*
  * Convert jiffies/jiffies_64 to clock_t and back.
  */
-clock_t jiffies_to_clock_t(unsigned long x)
+clock_t jiffies_to_clock_t(long x0)
 {
+	unsigned long x = x0;
 #if (TICK_NSEC % (NSEC_PER_SEC / USER_HZ)) == 0
 # if HZ < USER_HZ
 	return x * (USER_HZ / HZ);
