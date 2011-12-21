@@ -338,7 +338,14 @@ struct sas_ha_struct {
 	struct sas_ha_event ha_events[HA_NUM_EVENTS];
 	unsigned long	 pending;
 
+#ifdef __GENKSYMS__
 	enum sas_ha_state state;
+#else
+	u8 state;
+	u8 strict_wide_ports;  /* both sas_addr and attached_sas_addr must match
+				* their siblings when forming wide ports */
+	u8 pad[2];
+#endif
 	spinlock_t 	  state_lock;
 
 	struct scsi_core core;
@@ -359,8 +366,6 @@ struct sas_ha_struct {
 	/* The class calls this to send a task for execution. */
 	int lldd_max_execute_num;
 	int lldd_queue_size;
-	int strict_wide_ports; /* both sas_addr and attached_sas_addr must match
-				* their siblings when forming wide ports */
 
 	/* LLDD calls these to notify the class of an event. */
 	void (*notify_ha_event)(struct sas_ha_struct *, enum ha_event);
