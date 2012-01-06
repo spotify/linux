@@ -1721,18 +1721,6 @@ static int ub_bd_release(struct gendisk *disk, fmode_t mode)
 }
 
 /*
- * The ioctl interface.
- */
-static int ub_bd_ioctl(struct block_device *bdev, fmode_t mode,
-    unsigned int cmd, unsigned long arg)
-{
-	struct gendisk *disk = bdev->bd_disk;
-	void __user *usermem = (void __user *) arg;
-
-	return scsi_cmd_ioctl(disk->queue, disk, mode, cmd, usermem);
-}
-
-/*
  * This is called by check_disk_change if we reported a media change.
  * The main onjective here is to discover the features of the media such as
  * the capacity, read-only status, etc. USB storage generally does not
@@ -1793,7 +1781,7 @@ static const struct block_device_operations ub_bd_fops = {
 	.owner		= THIS_MODULE,
 	.open		= ub_bd_open,
 	.release	= ub_bd_release,
-	.locked_ioctl	= ub_bd_ioctl,
+	.locked_ioctl	= scsi_cmd_blk_ioctl,
 	.media_changed	= ub_bd_media_changed,
 	.revalidate_disk = ub_bd_revalidate,
 };
