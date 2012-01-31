@@ -271,7 +271,7 @@ static int ignoring_children(struct sighand_struct *sigh)
  * reap it now, in that case we must also wake up sub-threads sleeping in
  * do_wait().
  */
-static bool __ptrace_detach(struct task_struct *tracer, struct task_struct *p)
+bool __ptrace_detach(struct task_struct *tracer, struct task_struct *p)
 {
 	__ptrace_unlink(p);
 

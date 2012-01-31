@@ -134,6 +134,13 @@ static inline __must_check int tracehook_report_syscall_entry(
  */
 static inline void tracehook_report_syscall_exit(struct pt_regs *regs, int step)
 {
+	if (step && (task_ptrace(current) & PT_PTRACED)) {
+		siginfo_t info;
+		user_single_step_siginfo(current, regs, &info);
+		force_sig_info(SIGTRAP, &info, current);
+		return;
+	}
+
 	ptrace_report_syscall(regs);
 }
 
@@ -149,7 +156,7 @@ static inline int tracehook_unsafe_exec(struct task_struct *task)
 {
 	int unsafe = 0;
 	int ptrace = task_ptrace(task);
-	if (ptrace & PT_PTRACED) {
+	if (ptrace) {
 		if (ptrace & PT_PTRACE_CAP)
 			unsafe |= LSM_UNSAFE_PTRACE_CAP;
 		else
@@ -171,7 +178,7 @@ static inline int tracehook_unsafe_exec(struct task_struct *task)
  */
 static inline struct task_struct *tracehook_tracer_task(struct task_struct *tsk)
 {
-	if (task_ptrace(tsk) & PT_PTRACED)
+	if (task_ptrace(tsk))
 		return rcu_dereference(tsk->parent);
 	return NULL;
 }
@@ -379,7 +386,7 @@ static inline void tracehook_signal_handler(int sig, siginfo_t *info,
 					    const struct k_sigaction *ka,
 					    struct pt_regs *regs, int stepping)
 {
-	if (stepping)
+	if (stepping && (task_ptrace(current) & PT_PTRACED))
 		ptrace_notify(SIGTRAP);
 }
 
@@ -485,7 +492,7 @@ static inline int tracehook_get_signal(struct task_struct *task,
  */
 static inline int tracehook_notify_jctl(int notify, int why)
 {
-	return notify ?: (current->ptrace & PT_PTRACED) ? why : 0;
+	return notify ?: task_ptrace(current) ? why : 0;
 }
 
 /**
