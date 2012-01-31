@@ -310,6 +310,15 @@ config AUDIT_TREE
 	depends on AUDITSYSCALL
 	select INOTIFY
 
+config UTRACE
+	bool "Infrastructure for tracing and debugging user processes"
+	depends on EXPERIMENTAL
+	depends on HAVE_ARCH_TRACEHOOK
+	help
+	  Enable the utrace process tracing interface.  This is an internal
+	  kernel interface exported to kernel modules, to track events in
+	  user threads, extract and change user thread state.
+
 menu "RCU Subsystem"
 
 choice
