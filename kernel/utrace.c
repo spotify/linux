@@ -811,6 +811,22 @@ relock:
 	spin_unlock_irq(&task->sighand->siglock);
 	spin_unlock(&utrace->lock);
 
+	/*
+	 * If ptrace is among the reasons for this stop, do its
+	 * notification now.  This could not just be done in
+	 * ptrace's own event report callbacks because it has to
+	 * be done after we are in TASK_TRACED.  This makes the
+	 * synchronization with ptrace_do_wait() work right.
+	 *
+	 * It's only because of the bad old overloading of the do_wait()
+	 * logic for handling ptrace stops that we need this special case
+	 * here.  One day we will clean up ptrace so it does not need to
+	 * work this way.  New things that are designed sensibly don't need
+	 * a wakeup that synchronizes with tasklist_lock and ->state, so
+	 * the proper utrace API does not try to support this weirdness.
+	 */
+	ptrace_notify_stop(task);
+
 	schedule();
 
 	utrace_finish_stop();

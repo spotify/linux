@@ -79,7 +79,7 @@
 #include <linux/compiler.h>		/* For unlikely.  */
 #include <linux/sched.h>		/* For struct task_struct.  */
 
-
+extern void ptrace_notify_stop(struct task_struct *tracee);
 extern long arch_ptrace(struct task_struct *child, long request, long addr, long data);
 extern int ptrace_traceme(void);
 extern int ptrace_readdata(struct task_struct *tsk, unsigned long src, char __user *dst, int len);
