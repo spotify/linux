@@ -39,11 +39,6 @@ static int loading_timeout = 60;	/* In seconds */
  * guarding for corner cases a global lock should be OK */
 static DEFINE_MUTEX(fw_lock);
 
-struct paged_firmware {
-	struct firmware fw;
-	struct page **pages;
-};
-
 struct firmware_priv {
 	char *fw_id;
 	struct completion completion;
@@ -132,13 +127,12 @@ static ssize_t firmware_loading_show(struct device *dev,
 
 static void firmware_free_data(const struct firmware *fw)
 {
-	struct page **pages = ((struct paged_firmware *)fw)->pages;
 	int i;
 	vunmap(fw->data);
-	if (pages) {
+	if (fw->pages) {
 		for (i = 0; i < PFN_UP(fw->size); i++)
-			__free_page(pages[i]);
-		kfree(pages);
+			__free_page(fw->pages[i]);
+		kfree(fw->pages);
 	}
 }
 
@@ -175,7 +169,7 @@ static ssize_t firmware_loading_store(struct device *dev,
 			break;
 		}
 		firmware_free_data(fw_priv->fw);
-		memset(fw_priv->fw, 0, sizeof(struct paged_firmware));
+		memset(fw_priv->fw, 0, sizeof(struct firmware));
 		/* If the pages are not owned by 'struct firmware' */
 		for (i = 0; i < fw_priv->nr_pages; i++)
 			__free_page(fw_priv->pages[i]);
@@ -197,7 +191,7 @@ static ssize_t firmware_loading_store(struct device *dev,
 				goto err;
 			}
 			/* Pages are now owned by 'struct firmware' */
-			((struct paged_firmware *)fw_priv->fw)->pages = fw_priv->pages;
+			fw_priv->fw->pages = fw_priv->pages;
 			fw_priv->pages = NULL;
 
 			fw_priv->page_array_size = 0;
@@ -495,7 +489,7 @@ _request_firmware(const struct firmware **firmware_p, const char *name,
 	if (!firmware_p)
 		return -EINVAL;
 
-	*firmware_p = firmware = kzalloc(sizeof(struct paged_firmware), GFP_KERNEL);
+	*firmware_p = firmware = kzalloc(sizeof(*firmware), GFP_KERNEL);
 	if (!firmware) {
 		dev_err(device, "%s: kmalloc(struct firmware) failed\n",
 			__func__);
