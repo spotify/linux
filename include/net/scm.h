@@ -10,13 +10,12 @@
 /* Well, we should have at least one descriptor open
  * to accept passed FDs 8)
  */
-#define SCM_MAX_FD	253
+#define SCM_MAX_FD	255
 
 struct scm_fp_list
 {
 	struct list_head	list;
-	short			count;
-	short			max;
+	int			count;
 	struct file		*fp[SCM_MAX_FD];
 };
 
