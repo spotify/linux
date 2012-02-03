@@ -3991,7 +3991,6 @@ static int __init synclinkmp_init(void)
 	serial_driver->init_termios.c_ospeed = 9600;
 	serial_driver->flags = TTY_DRIVER_REAL_RAW;
 	tty_set_operations(serial_driver, &ops);
-	serial_driver->flags |= TTY_DRIVER_HAS_GET_ICOUNT;
 	if ((rc = tty_register_driver(serial_driver)) < 0) {
 		printk("%s(%d):Couldn't register serial driver\n",
 			__FILE__,__LINE__);

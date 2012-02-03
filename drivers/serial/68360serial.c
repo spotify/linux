@@ -2461,7 +2461,6 @@ static int __init rs_360_init(void)
 	serial_driver->init_termios.c_cflag =
 		baud_idx | CS8 | CREAD | HUPCL | CLOCAL;
 	serial_driver->flags = TTY_DRIVER_REAL_RAW;
-	serial_driver->flags |= TTY_DRIVER_HAS_GET_ICOUNT;
 	tty_set_operations(serial_driver, &rs_360_ops);
 	
 	if (tty_register_driver(serial_driver))

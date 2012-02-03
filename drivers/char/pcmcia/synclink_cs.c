@@ -2916,7 +2916,6 @@ static int __init synclink_cs_init(void)
 	    B9600 | CS8 | CREAD | HUPCL | CLOCAL;
     serial_driver->flags = TTY_DRIVER_REAL_RAW;
     tty_set_operations(serial_driver, &mgslpc_ops);
-    serial_driver->flags |= TTY_DRIVER_HAS_GET_ICOUNT;
 
     if ((rc = tty_register_driver(serial_driver)) < 0) {
 	    printk("%s(%d):Couldn't register serial driver\n",
