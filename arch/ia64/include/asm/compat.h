@@ -4,6 +4,7 @@
  * Architecture specific compatibility types
  */
 #include <linux/types.h>
+#include <asm/system.h>
 
 #define COMPAT_USER_HZ	100
 
@@ -203,5 +204,12 @@ arch_compat_alloc_user_space (long len)
 	struct pt_regs *regs = task_pt_regs(current);
 	return (void __user *) (((regs->r12 & 0xffffffff) & -16) - len);
 }
+
+#ifdef CONFIG_COMPAT
+static inline int is_compat_task(void)
+{
+	return IS_IA32_PROCESS(task_pt_regs(current));
+}
+#endif
 
 #endif /* _ASM_IA64_COMPAT_H */
