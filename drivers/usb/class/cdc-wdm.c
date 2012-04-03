@@ -277,7 +277,7 @@ static void cleanup(struct wdm_device *desc)
 			desc->sbuf,
 			desc->validity->transfer_dma);
 	usb_buffer_free(interface_to_usbdev(desc->intf),
-			desc->wMaxCommand,
+			desc->bMaxPacketSize0,
 			desc->inbuf,
 			desc->response->transfer_dma);
 	kfree(desc->orq);
@@ -314,7 +314,7 @@ static ssize_t wdm_write
 	if (r < 0)
 		goto outnp;
 
-	if (!file->f_flags && O_NONBLOCK)
+	if (!(file->f_flags & O_NONBLOCK))
 		r = wait_event_interruptible(desc->wait, !test_bit(WDM_IN_USE,
 								&desc->flags));
 	else
