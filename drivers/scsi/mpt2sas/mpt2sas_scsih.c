@@ -6107,6 +6107,7 @@ _scsih_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	list_del(&ioc->list);
 	scsi_remove_host(shost);
  out_add_shost_fail:
+	scsi_host_put(shost);
 	return -ENODEV;
 }
 
