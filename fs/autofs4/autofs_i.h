@@ -125,7 +125,6 @@ struct autofs_sb_info {
 	int sub_version;
 	int min_proto;
 	int max_proto;
-	int compat_daemon;
 	unsigned long exp_timeout;
 	unsigned int type;
 	int reghost_enabled;
