@@ -27,7 +27,9 @@
 #include <linux/sched.h>
 #include <linux/prctl.h>
 #include <linux/securebits.h>
+#ifndef __GENKSYMS__
 #include <linux/personality.h>
+#endif
 
 /*
  * If a non-root user executes a setuid-root binary in
