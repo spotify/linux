@@ -1,7 +1,7 @@
 /*******************************************************************************
 
   Intel 10 Gigabit PCI Express Linux driver
-  Copyright(c) 1999 - 2009 Intel Corporation.
+  Copyright(c) 1999 - 2010 Intel Corporation.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms and conditions of the GNU General Public License,
@@ -36,7 +36,6 @@
                                             * 1 WRR - Weighted Round Robin
                                             */
 #define IXGBE_RTTDCS_TDRM       0x00000010 /* Transmit Recycle Mode */
-#define IXGBE_RTTDCS_ARBDIS     0x00000040 /* DCB arbiter disable */
 #define IXGBE_RTTDCS_BDPM       0x00400000 /* Bypass Data Pipe - must clear! */
 #define IXGBE_RTTDCS_BPBFSM     0x00800000 /* Bypass PB Free Space - must
                                              * clear!
@@ -92,8 +91,14 @@
 #define IXGBE_RXPBSIZE_64KB     0x00010000 /* 64KB Packet Buffer */
 #define IXGBE_RXPBSIZE_80KB     0x00014000 /* 80KB Packet Buffer */
 #define IXGBE_RXPBSIZE_128KB    0x00020000 /* 128KB Packet Buffer */
+#define IXGBE_RXPBSIZE_MAX      0x00080000 /* 512KB Packet Buffer*/
+#define IXGBE_TXPBSIZE_MAX      0x00028000 /* 160KB Packet Buffer*/
 
 #define IXGBE_TXPBTHRESH_DCB    0xA        /* THRESH value for DCB mode */
+#define IXGBE_TXPKT_SIZE_MAX    0xA        /* Max Tx Packet size  */
+
+/* SECTXMINIFG DCB */
+#define IXGBE_SECTX_DCB         0x00001F00 /* DCB TX Buffer SEC IFG */
 
 
 /* DCB hardware-specific driver APIs */
@@ -118,7 +123,6 @@ s32 ixgbe_dcb_config_tx_data_arbiter_82599(struct ixgbe_hw *hw,
                                            struct ixgbe_dcb_config *dcb_config);
 s32 ixgbe_dcb_config_rx_arbiter_82599(struct ixgbe_hw *hw,
                                       struct ixgbe_dcb_config *dcb_config);
-
 
 /* DCB hw initialization */
 s32 ixgbe_dcb_hw_config_82599(struct ixgbe_hw *hw,

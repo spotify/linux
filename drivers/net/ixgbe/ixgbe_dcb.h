@@ -1,7 +1,7 @@
 /*******************************************************************************
 
   Intel 10 Gigabit PCI Express Linux driver
-  Copyright(c) 1999 - 2009 Intel Corporation.
+  Copyright(c) 1999 - 2010 Intel Corporation.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms and conditions of the GNU General Public License,
@@ -20,7 +20,6 @@
   the file called "COPYING".
 
   Contact Information:
-  Linux NICS <linux.nics@intel.com>
   e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
   Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
 
@@ -97,13 +96,13 @@ struct dcb_support {
 
 /* Traffic class bandwidth allocation per direction */
 struct tc_bw_alloc {
-	u8 bwg_id;		  /* Bandwidth Group (BWG) ID */
-	u8 bwg_percent;		  /* % of BWG's bandwidth */
-	u8 link_percent;	  /* % of link bandwidth */
-	u8 up_to_tc_bitmap;	  /* User Priority to Traffic Class mapping */
+	u8 bwg_id;                /* Bandwidth Group (BWG) ID */
+	u8 bwg_percent;           /* % of BWG's bandwidth */
+	u8 link_percent;          /* % of link bandwidth */
+	u8 up_to_tc_bitmap;       /* User Priority to Traffic Class mapping */
 	u16 data_credits_refill;  /* Credit refill amount in 64B granularity */
-	u16 data_credits_max;	  /* Max credits for a configured packet buffer
-				   * in 64B granularity.*/
+	u16 data_credits_max;     /* Max credits for a configured packet buffer
+	                           * in 64B granularity.*/
 	enum strict_prio_type prio_type; /* Link or Group Strict Priority */
 };
 
@@ -134,12 +133,12 @@ struct dcb_num_tcs {
 };
 
 struct ixgbe_dcb_config {
+	struct tc_configuration tc_config[MAX_TRAFFIC_CLASS];
 	struct dcb_support support;
 	struct dcb_num_tcs num_tcs;
-	struct tc_configuration tc_config[MAX_TRAFFIC_CLASS];
 	u8     bw_percentage[2][MAX_BW_GROUP]; /* One each for Tx/Rx */
-	bool   pfc_mode_enable;
-	bool   round_robin_enable;
+	bool pfc_mode_enable;
+	bool  round_robin_enable;
 
 	enum dcb_rx_pba_cfg rx_pba_cfg;
 
@@ -153,32 +152,41 @@ struct ixgbe_dcb_config {
 s32 ixgbe_dcb_check_config(struct ixgbe_dcb_config *config);
 
 /* DCB credits calculation */
-s32 ixgbe_dcb_calculate_tc_credits(struct ixgbe_dcb_config *, u8);
+s32 ixgbe_dcb_calculate_tc_credits(struct ixgbe_hw *hw,
+                                   struct ixgbe_dcb_config *config,
+                                   u32 max_frame_size,
+                                   u8 direction);
 
 /* DCB PFC functions */
-s32 ixgbe_dcb_config_pfc(struct ixgbe_hw *, struct ixgbe_dcb_config *g);
-s32 ixgbe_dcb_get_pfc_stats(struct ixgbe_hw *, struct ixgbe_hw_stats *, u8);
+s32 ixgbe_dcb_config_pfc(struct ixgbe_hw *hw,
+                         struct ixgbe_dcb_config *dcb_config);
+s32 ixgbe_dcb_get_pfc_stats(struct ixgbe_hw *hw, struct ixgbe_hw_stats *stats,
+                            u8 tc_count);
 
 /* DCB traffic class stats */
 s32 ixgbe_dcb_config_tc_stats(struct ixgbe_hw *);
-s32 ixgbe_dcb_get_tc_stats(struct ixgbe_hw *, struct ixgbe_hw_stats *, u8);
+s32 ixgbe_dcb_get_tc_stats(struct ixgbe_hw *hw, struct ixgbe_hw_stats *stats,
+                           u8 tc_count);
 
 /* DCB config arbiters */
-s32 ixgbe_dcb_config_tx_desc_arbiter(struct ixgbe_hw *,
-                                     struct ixgbe_dcb_config *);
-s32 ixgbe_dcb_config_tx_data_arbiter(struct ixgbe_hw *,
-                                     struct ixgbe_dcb_config *);
-s32 ixgbe_dcb_config_rx_arbiter(struct ixgbe_hw *, struct ixgbe_dcb_config *);
+s32 ixgbe_dcb_config_tx_desc_arbiter(struct ixgbe_hw *hw,
+                                     struct ixgbe_dcb_config *dcb_config);
+s32 ixgbe_dcb_config_tx_data_arbiter(struct ixgbe_hw *hw,
+                                     struct ixgbe_dcb_config *dcb_config);
+s32 ixgbe_dcb_config_rx_arbiter(struct ixgbe_hw *hw,
+                                struct ixgbe_dcb_config *dcb_config);
 
 /* DCB hw initialization */
-s32 ixgbe_dcb_hw_config(struct ixgbe_hw *, struct ixgbe_dcb_config *);
+s32 ixgbe_dcb_hw_config(struct ixgbe_hw *hw, struct ixgbe_dcb_config *config);
+
 
 /* DCB definitions for credit calculation */
-#define MAX_CREDIT_REFILL       511  /* 0x1FF * 64B = 32704B */
-#define MINIMUM_CREDIT_REFILL   5    /* 5*64B = 320B */
-#define MINIMUM_CREDIT_FOR_JUMBO 145  /* 145= UpperBound((9*1024+54)/64B) for 9KB jumbo frame */
-#define DCB_MAX_TSO_SIZE        (32*1024) /* MAX TSO packet size supported in DCB mode */
-#define MINIMUM_CREDIT_FOR_TSO  (DCB_MAX_TSO_SIZE/64 + 1) /* 513 for 32KB TSO packet */
-#define MAX_CREDIT              4095 /* Maximum credit supported: 256KB * 1204 / 64B */
+#define DCB_CREDIT_QUANTUM      64
+#define MAX_CREDIT_REFILL       200   /* 200 * 64B = 12800B */
+#define DCB_MAX_TSO_SIZE        (32 * 1024) /* MAX TSO packet size supported
+                                             * in DCB mode */
+/* 513 for 32KB TSO packet */
+#define MINIMUM_CREDIT_FOR_TSO  ((DCB_MAX_TSO_SIZE / DCB_CREDIT_QUANTUM) + 1)
+#define MAX_CREDIT              (2 * MAX_CREDIT_REFILL)
 
 #endif /* _DCB_CONFIG_H */
