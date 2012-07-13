@@ -1421,7 +1421,7 @@ out:
 }
 
 /**
- *  igb_check_downshift - Checks whether a downshift in speed occurred
+ *  igb_check_downshift - Checks whether a downshift in speed occured
  *  @hw: pointer to the HW structure
  *
  *  Success returns 0, Failure returns 1

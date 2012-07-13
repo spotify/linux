@@ -115,6 +115,10 @@
 #define E1000_FCRTC             0x02170 /* Flow Control Rx high watermark */
 #define E1000_PCIEMISC          0x05BB8 /* PCIE misc config register */
 
+/* TX Rate Limit Registers */
+#define E1000_RTTDQSEL	0x3604	/* Tx Desc Plane Queue Select - WO */
+#define E1000_RTTBCNRC	0x36B0	/* Tx BCN Rate-Scheduler Config - WO */
+
 /* Split and Replication RX Control - RW */
 #define E1000_RXPBS    0x02404  /* Rx Packet Buffer Size - RW */
 /*
@@ -320,6 +324,7 @@
 #define E1000_VMOLR(_n)        (0x05AD0 + (4 * (_n)))
 #define E1000_VLVF(_n)         (0x05D00 + (4 * (_n))) /* VLAN Virtual Machine
                                                        * Filter - RW */
+#define E1000_VMVIR(_n)        (0x03700 + (4 * (_n)))
 
 #define wr32(reg, value) (writel(value, hw->hw_addr + reg))
 #define rd32(reg) (readl(hw->hw_addr + reg))
