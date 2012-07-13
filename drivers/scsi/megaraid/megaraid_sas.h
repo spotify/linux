@@ -30,8 +30,6 @@
 #define	PCI_DEVICE_ID_LSI_VERDE_ZCR		0x0413
 #define	PCI_DEVICE_ID_LSI_SAS1078GEN2		0x0078
 #define	PCI_DEVICE_ID_LSI_SAS0079GEN2		0x0079
-#define	PCI_DEVICE_ID_LSI_SAS0073SKINNY		0x0073
-#define	PCI_DEVICE_ID_LSI_SAS0071SKINNY		0x0071
 
 /*
  * =====================================
@@ -572,7 +570,6 @@ struct megasas_ctrl_info {
  * is shown below
  */
 #define MEGASAS_INT_CMDS			32
-#define MEGASAS_SKINNY_INT_CMDS			5
 
 /*
  * FW can accept both 32 and 64 bit SGLs. We want to allocate 32/64 bit
@@ -587,8 +584,6 @@ struct megasas_ctrl_info {
 #define MFI_REPLY_1078_MESSAGE_INTERRUPT	0x80000000
 #define MFI_REPLY_GEN2_MESSAGE_INTERRUPT	0x00000001
 #define MFI_GEN2_ENABLE_INTERRUPT_MASK		(0x00000001 | 0x00000004)
-#define MFI_REPLY_SKINNY_MESSAGE_INTERRUPT	0x40000000
-#define MFI_SKINNY_ENABLE_INTERRUPT_MASK	(0x00000001)
 
 /*
 * register set for both 1068 and 1078 controllers
@@ -1066,6 +1061,17 @@ struct megasas_evt_detail {
 
 } __attribute__ ((packed));
 
+ struct megasas_instance_template {
+	void (*fire_cmd)(dma_addr_t ,u32 ,struct megasas_register_set __iomem *);
+
+	void (*enable_intr)(struct megasas_register_set __iomem *) ;
+	void (*disable_intr)(struct megasas_register_set __iomem *);
+
+	int (*clear_intr)(struct megasas_register_set __iomem *);
+
+	u32 (*read_fw_status_reg)(struct megasas_register_set __iomem *);
+ };
+
 struct megasas_instance {
 
 	u32 *producer;
@@ -1090,8 +1096,6 @@ struct megasas_instance {
 	spinlock_t cmd_pool_lock;
 	/* used to synch producer, consumer ptrs in dpc */
 	spinlock_t completion_lock;
-	/* used to sync fire the cmd to fw */
-	spinlock_t fire_lock;
 	struct dma_pool *frame_dma_pool;
 	struct dma_pool *sense_dma_pool;
 
@@ -1116,22 +1120,9 @@ struct megasas_instance {
 	struct tasklet_struct isr_tasklet;
 
 	u8 flag;
-	u8 unload;
 	unsigned long last_time;
 
 	struct timer_list io_completion_timer;
-};
-
-struct megasas_instance_template {
-	void (*fire_cmd)(struct megasas_instance *, dma_addr_t, \
-		u32, struct megasas_register_set __iomem *);
-
-	void (*enable_intr)(struct megasas_register_set __iomem *) ;
-	void (*disable_intr)(struct megasas_register_set __iomem *);
-
-	int (*clear_intr)(struct megasas_register_set __iomem *);
-
-	u32 (*read_fw_status_reg)(struct megasas_register_set __iomem *);
 };
 
 #define MEGASAS_IS_LOGICAL(scp)						\
